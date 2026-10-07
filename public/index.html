@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kalinga — Vetted local caregivers for your parents</title>
+<meta name="description" content="Scheduled caregiver visits for elderly parents in the Philippines. Local, vetted, and fully on record.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;1,500;1,600;1,700&display=swap" rel="stylesheet">
+<style>
+  body{margin:0;background:#F6F1E7;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0E2A38;-webkit-font-smoothing:antialiased}
+  *{box-sizing:border-box}
+  a{color:#0E3446;text-decoration:none}
+  a:hover{color:#3E7C93}
+  button{font-family:inherit;cursor:pointer}
+  h1,h2,h3,p{margin:0}
+  html{scroll-behavior:smooth}
+  .img-slot{width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:inherit;color:rgba(14,42,56,.35);font-size:12px;font-weight:600;text-align:center;padding:12px;line-height:1.4}
+  .cg-strip{scrollbar-width:none}
+  .cg-strip::-webkit-scrollbar{display:none}
+  input:focus{border-color:#0E3446!important}
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+/* ---------- data ---------- */
+const WHO = [['nanay','Nanay'],['tatay','Tatay'],['lola','Lola'],['lolo','Lolo'],['both','Both parents']];
+const AREAS = [['iloilo','Iloilo'],['cebu','Cebu'],['mm','Metro Manila'],['other','Somewhere else']];
+const NEEDS = [['meds','Medication check'],['vitals','Blood pressure & wellbeing'],['meals','Meals & hydration'],['errands','Groceries & errands'],['doctor','Doctor visit companion'],['company','Companionship']];
+const PLANS = {
+  basic:{name:'Basic',price:'₱1,499',freq:'Once a week'},
+  standard:{name:'Standard',price:'₱2,799',freq:'Twice a week'},
+  premium:{name:'Premium',price:'₱4,999',freq:'Every day'}
+};
+const TIERS = [
+  {id:'basic',code:'BASIC',tagline:'A weekly check-in',title:'Once a week',big:'1×',bigSub:'visit / week',desc:'One visit of about an hour each week. Good for a parent who is independent but lives alone.',perDay:'≈ ₱50/day',feats:['Checklist + photos every visit','Message your caregiver','Emergency alerts (push + SMS)']},
+  {id:'standard',code:'STANDARD',tagline:'Steady, regular care',title:'Twice a week',big:'2×',bigSub:'visits / week',desc:'Two visits a week with the same caregiver. Most families choose this one.',perDay:'≈ ₱93/day',feats:['Photos + video every visit','Backup caregiver if they cancel','Up to 4 family members linked']},
+  {id:'premium',code:'PREMIUM',tagline:'Someone there daily',title:'Every day',big:'7×',bigSub:'visits / week',desc:'A visit every day of the week. For parents who need a closer eye or are recovering from an illness.',perDay:'≈ ₱167/day',feats:['Daily visits, Mon–Sun','Priority backup caregiver','Video call during visits']}
+];
+const HARDWARE = [
+  {t:'Safety tag',b:'A GPS pendant with fall detection, an SOS button and safe-zone alerts.'},
+  {t:'Home camera',b:'Covers common areas only. Only the primary account holder can view it.'},
+  {t:'Caregiver body cam',b:'Worn only during visits. Footage is opened only if there is a formal dispute.'}
+];
+const CAREGIVERS = [
+  {name:'Joy Santos',meta:'Jaro, Iloilo · 6 yrs'},
+  {name:'Ramon Villareal',meta:'Mandurriao, Iloilo · 4 yrs'},
+  {name:'Liza Fernandez, RN',meta:'La Paz, Iloilo · 9 yrs'},
+  {name:'Grace Tan',meta:'Lahug, Cebu · 5 yrs'},
+  {name:'Arnel Bautista',meta:'Mandaue, Cebu · 7 yrs'},
+  {name:'Marites Ocampo',meta:'Quezon City · 8 yrs'},
+  {name:'Jenny Aquino',meta:'Makati · 3 yrs'}
+];
+const VISITS = [
+  {tin:'9:14',tout:'10:32',tags:['Meds taken','BP 128/82','Groceries'],note:'Nanay Remy ate all her lunch today and we walked to the sari-sari store. She asked if you will call on Saturday.',by:'Joy, visiting Nanay Remy · Jaro'},
+  {tin:'2:00',tout:'3:10',tags:['Meds taken','BP 135/86','Pharmacy'],note:'Tatay Ben picked up his refill from Mercury Drug with me. His knee was a little sore, so I let his daughter know.',by:'Arnel, visiting Tatay Ben · Mandaue'},
+  {tin:'8:30',tout:'9:25',tags:['Meds taken','Breakfast','Video call'],note:'Lola Cora watched the video call with her apo in Toronto and was so happy. She asked me to send the photo to the family.',by:'Marites, visiting Lola Cora · Quezon City'}
+];
+const PROMISES = ['Backup caregiver','Next visit free','Cancel anytime','Locked visit records'];
+const FAQS = [
+  ['Who are the caregivers?','They are local caregivers, many with TESDA caregiving or nursing backgrounds, who live near your parent. Before they can take a booking, each one passes an NBI clearance, ID and reference checks, first-aid/CPR verification and an in-person interview.'],
+  ['Is Kalinga a medical service?','No. Our caregivers do scheduled, non-medical check-in visits. If something looks wrong, they follow our emergency protocol. That means calling 911 when it is needed, alerting your family, and notifying our team.'],
+  ['What if the caregiver can’t come?','We send a vetted backup caregiver and tell you right away. If no backup is available, your next visit is free.'],
+  ['Can my siblings see the visits?','Yes. Each linked family member has their own login and gets their own alerts. Only the primary account holder can manage billing.'],
+  ['How do I pay from abroad?','You can pay by card (Visa or Mastercard) or with Wise in your own currency. If you prefer pesos, you can use GCash or Maya. You are billed monthly, and every charge is listed on your invoice.'],
+  ['Is my family’s information private?','Yes. Medical notes and emergency contacts are encrypted. Only your parent’s assigned caregiver and the family members you link can see them. We follow the Data Privacy Act (RA 10173).'],
+  ['Where are you available?','We are starting in Metro Manila. If your parent lives somewhere else, start a care match anyway and we will let you know when we reach their area.'],
+  ['Can I cancel or pause my plan?','Yes. You can do it anytime in the app, and the change applies from your next billing cycle.']
+];
+const FOOT_COLS = [
+  {h:'Company',links:[{t:'About us',href:'#'},{t:'How it works',href:'#how'},{t:'Start a care match',href:'#top'},{t:'Contact',href:'mailto:hello@kalinga.ph'}]},
+  {h:'Plans',links:[{t:'Basic',href:'#plans'},{t:'Standard',href:'#plans'},{t:'Premium',href:'#plans'},{t:'Safety devices',href:'#plans'}]},
+  {h:'Support',links:[{t:'Become a caregiver',href:'#join'},{t:'Caregiver log in',href:'#join'},{t:'Privacy policy',href:'#'},{t:'Terms of service',href:'#'},{t:'Emergency protocol',href:'#'}]}
+];
+const JOIN_PERKS = ['Visits near home, scheduled around your family','Weekly pay through GCash or Maya, no agency cut','Free first-aid, CPR and dementia-care training'];
+const JOIN_STEPS = [['1','Apply online','About 5 minutes. Your name, mobile number, location and experience.'],['2','Send your documents','Valid ID, NBI clearance, barangay clearance, plus your TESDA NC II or PRC license if you have one.'],['3','Interview and orientation','A short video or in-person interview, then a half-day orientation.'],['4','Start receiving visits','Log in to the Kalinga app and accept visits from families nearby.']];
+const AP_DOCS = [{id:'id',t:'Valid government ID',req:true},{id:'nbi',t:'NBI clearance',req:true},{id:'brgy',t:'Barangay clearance',req:true},{id:'prc',t:'PRC nursing license',req:true},{id:'tesda',t:'TESDA Caregiving NC II',req:false},{id:'cpr',t:'First-aid or CPR certificate',req:false}];
+
+/* ---------- state ---------- */
+const blankAp = () => ({open:false,step:0,role:null,name:'',phone:'',city:'',yrs:null,docs:[],err:'',ref:''});
+const blankLg = () => ({role:'family',id:'',pw:'',code:'',mode:'form',err:'',info:'',loading:false});
+const blankQ = () => ({step:0,who:null,area:null,needs:[],plan:null,name:'',email:'',phone:'',country:'',tos:false,err:'',sending:false});
+
+let state = {
+  wide: window.innerWidth >= 900,
+  scrolled: window.scrollY > 520,
+  quizOpen:false, q:blankQ(),
+  loginOpen:false, lg:blankLg(),
+  ap:blankAp(),
+  faqOpen:-1
+};
+let _t;
+
+function setState(patch){ state = {...state, ...(typeof patch==='function'?patch(state):patch)}; render(); }
+function setQ(p){ setState(s=>({q:{...s.q, err:'', ...(typeof p==='function'?p(s.q):p)}})); }
+function setAp(p){ setState(s=>({ap:{...s.ap, err:'', ...(typeof p==='function'?p(s.ap):p)}})); }
+function setLg(p){ setState(s=>({lg:{...s.lg, err:'', ...(typeof p==='function'?p(s.lg):p)}})); }
+
+function esc(str){ return String(str==null?'':str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+/* ---------- actions ---------- */
+function openQuiz(plan){ setState({quizOpen:true, q:{...blankQ(), plan:plan||null}}); }
+function closeQuiz(){ setState({quizOpen:false}); }
+function openLogin(){ setState({loginOpen:true, lg:blankLg()}); }
+function closeLogin(){ setState({loginOpen:false}); }
+function openApply(){ setState({ap:{...blankAp(), open:true}}); }
+function closeApply(){ setState(s=>({ap:{...s.ap, open:false}})); }
+function openCgLogin(){ setState({loginOpen:true, lg:{...blankLg(), role:'caregiver'}}); }
+
+function quizNext(){
+  const q = state.q;
+  if (q.step===0 && (!q.who || !q.area)) return setQ({err:"Choose who we're visiting and where they live."});
+  if (q.step===1 && !q.needs.length) return setQ({err:'Choose at least one.'});
+  if (q.step===2 && !q.plan) return setQ({err:'Choose how often.'});
+  if (q.step===3){
+    if (!q.name.trim() || !q.email.trim() || !q.phone.trim() || !q.country.trim()) return setQ({err:'Please fill in every field.'});
+    if (!/^\S+@\S+\.\S+$/.test(q.email.trim())) return setQ({err:'Check your email address.'});
+    if (!q.tos) return setQ({err:'Please agree to the Terms to continue.'});
+    setQ({sending:true});
+    clearTimeout(_t);
+    _t = setTimeout(()=>{
+      try{
+        const list = JSON.parse(localStorage.getItem('kalinga_matches')||'[]');
+        list.push({...q, ts:new Date().toISOString()});
+        localStorage.setItem('kalinga_matches', JSON.stringify(list));
+      }catch(e){}
+      setQ({sending:false, step:4});
+    }, 1200);
+    return;
+  }
+  setQ({step:q.step+1});
+}
+function quizBack(){ setQ(q=>({step:Math.max(0,q.step-1)})); }
+
+function apNext(){
+  const a = state.ap;
+  if (a.step===0){
+    if (!a.role) return setAp({err:'Choose caregiver or nurse.'});
+    if (a.name.trim().split(/\s+/).length < 2) return setAp({err:'Enter your first and last name.'});
+    if (a.phone.replace(/\D/g,'').length < 10) return setAp({err:'Enter a valid mobile number.'});
+    if (!a.city.trim()) return setAp({err:'Enter your city or municipality.'});
+    if (!a.yrs) return setAp({err:'Choose your years of experience.'});
+    return setAp({step:1});
+  }
+  const need = AP_DOCS.filter(d=>d.req && (d.id!=='prc' || a.role==='nurse')).map(d=>d.id);
+  if (need.some(id=>!a.docs.includes(id))) return setAp({err:'Upload all required documents.'});
+  setAp({step:2, ref:'CG-'+String(Date.now()).slice(-5)});
+}
+function apBack(){ setAp({step:0}); }
+function apToggleDoc(id, on, docs){ setAp({docs: on ? docs.filter(x=>x!==id) : [...docs, id]}); }
+
+function submitLogin(){
+  const lg = state.lg;
+  if (!lg.id.trim()) return setLg({err:'Enter your email or mobile number.'});
+  if (lg.pw.length < 6) return setLg({err:'Password must be at least 6 characters.'});
+  finishLogin();
+}
+function finishLogin(){
+  const lg = state.lg;
+  setLg({loading:true, mode:'loading', info:''});
+  try{ localStorage.setItem('kalinga_session', JSON.stringify({id:lg.id.trim(), role:lg.role, ts:new Date().toISOString()})); }catch(e){}
+  clearTimeout(_t);
+  _t = setTimeout(()=>{ alert('Demo: this would continue into the Kalinga app (' + (lg.role==='caregiver'?'caregiver':'family') + ' view).'); setState({loginOpen:false}); }, 700);
+}
+function sendOtp(){ state.lg.id.trim() ? setLg({mode:'otp', info:''}) : setLg({err:'Enter your email or mobile number first.'}); }
+function verifyOtp(){ state.lg.code.length===6 ? finishLogin() : setLg({err:'Enter the 6-digit code.'}); }
+function lgBack(){ setLg({mode:'form', code:''}); }
+function forgotPw(){ state.lg.id.trim() ? setLg({info:'Reset link sent to '+state.lg.id.trim()+'.'}) : setLg({err:'Enter your email or mobile number first.'}); }
+function lgNew(){ state.lg.role==='caregiver' ? setState({loginOpen:false, ap:{...blankAp(), open:true}}) : setState({loginOpen:false, quizOpen:true, q:blankQ()}); }
+function apToApp(){ try{ localStorage.setItem('kalinga_session', JSON.stringify({id:state.ap.phone, role:'caregiver', applicant:true, ts:new Date().toISOString()})); }catch(e){} alert('Demo: this would continue into the caregiver app.'); }
+
+/* ---------- small render helpers ---------- */
+function pill(label,on,onClick,extra){
+  return `<button data-act="${onClick}" ${extra||''} style="height:48px;padding:0 20px;border-radius:999px;border:1.5px solid ${on?'#0E3446':'#DED6C7'};background:${on?'#0E3446':'#FFFFFF'};color:${on?'#FFFFFF':'#0E3446'};font-size:15px;font-weight:600">${esc(label)}</button>`;
+}
+
+/* ---------- render ---------- */
+function render(){
+  const s = state, q = s.q, lg = s.lg, a = s.ap;
+  const plan = PLANS[q.plan] || PLANS.standard;
+  const barCta = s.scrolled && s.wide;
+
+  const html = `
+  <div style="min-height:100vh;display:flex;flex-direction:column;overflow-x:hidden">
+
+  <header style="position:sticky;top:0;z-index:30;background:rgba(246,241,231,.92);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid rgba(14,52,70,.08)">
+    <div style="max-width:1200px;margin:0 auto;padding:0 24px;height:64px;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:16px">
+      <a href="#top" style="font-size:26px;font-weight:700;letter-spacing:-.03em;color:#0E3446">kalinga</a>
+      ${s.wide && !s.scrolled ? `
+      <nav style="display:flex;gap:30px;font-size:15px;font-weight:600">
+        <a href="#how">How it works</a><a href="#visits">Visits</a><a href="#plans">Plans</a><a href="#faq">FAQs</a>
+      </nav>` : barCta ? `
+      <div style="display:flex;align-items:center;gap:14px">
+        ${s.wide?`<span style="font-size:14px;font-weight:600">Find a caregiver for your parent</span>`:''}
+        <button data-act="openQuiz" style="height:38px;padding:0 18px;border-radius:999px;border:none;background:#0E3446;color:#FFFFFF;font-size:14px;font-weight:700">Start care match</button>
+      </div>` : `<span></span>`}
+      <div style="display:flex;justify-content:flex-end;align-items:center;gap:18px;font-size:15px;font-weight:600">
+        <a href="#join" style="color:#3E7C93;font-size:15px;font-weight:600;text-decoration:none">For caregivers</a>
+        <button data-act="openLogin" style="background:none;border:none;padding:8px 0;font-size:15px;font-weight:600;color:#0E3446">Log in</button>
+      </div>
+    </div>
+  </header>
+
+  <section id="top" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,480px),1fr));background:#F6F1E7">
+    <div style="padding:clamp(48px,7vw,96px) clamp(24px,6vw,96px);display:flex;flex-direction:column;justify-content:center;gap:24px;max-width:680px;width:100%">
+      <span style="font-size:12px;font-weight:700;letter-spacing:.14em;color:#3E7C93">KALINGA · VETTED LOCAL CAREGIVERS</span>
+      <h1 style="font-size:clamp(38px,4.8vw,60px);font-weight:600;line-height:1.08;letter-spacing:-.03em;color:#0E3446">Far from <em style="font-style:italic;color:#3E7C93">home</em>.<br>Never far from <em style="font-style:italic;color:#3E7C93">Nanay</em>.</h1>
+      <p style="font-size:17px;line-height:1.65;color:#2F4A57;max-width:500px">Answer a 2-minute care match and we'll match your parent with an NBI-cleared caregiver who lives nearby. They visit on the schedule you choose. After every visit you'll see GPS check-in times, photos and notes, even if you're in Dubai, Toronto or Hong Kong. Backed by our <strong style="color:#0E3446">missed-visit guarantee</strong>.</p>
+      <div style="display:flex;flex-direction:column;gap:14px;align-items:flex-start">
+        <button data-act="openQuiz" style="height:56px;padding:0 30px;border-radius:999px;border:none;background:#0E3446;color:#FFFFFF;font-size:16px;font-weight:700;box-shadow:0 8px 24px rgba(14,52,70,.25)">Start my care match →</button>
+        <span style="font-size:14px;color:#2F4A57"><strong style="color:#0E3446">Founding-family pricing</strong> · No contract, cancel anytime</span>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:10px 24px;font-size:14px;color:#2F4A57">
+        ${['NBI-cleared caregivers','GPS-verified visits','Backup if they cancel'].map(d=>`<span style="display:flex;align-items:center;gap:8px"><span style="width:6px;height:6px;border-radius:50%;background:#3E7C93"></span>${esc(d)}</span>`).join('')}
+      </div>
+    </div>
+    <div style="position:relative;min-height:520px;background:#CFE3E8">
+      <div class="img-slot">Hero photo: a caregiver and an elderly Filipino parent laughing at home, warm daylight</div>
+      <div style="position:absolute;left:24px;bottom:24px;background:rgba(255,255,255,.95);border-radius:18px;padding:14px 16px;display:flex;gap:12px;align-items:center;box-shadow:0 12px 32px rgba(14,42,56,.18);max-width:320px;pointer-events:none">
+        <div style="width:42px;height:42px;border-radius:50%;background:#0E3446;color:#FFFFFF;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;flex-shrink:0">JS</div>
+        <div style="display:flex;flex-direction:column;gap:2px">
+          <span style="font-size:14px;font-weight:700;color:#0E3446">Visit logged · 9:14 AM</span>
+          <span style="font-size:13px;color:#2F4A57;line-height:1.4">Joy checked in at Nanay Remy's. GPS verified.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="caregivers" style="background:linear-gradient(180deg,#0E3446 0%,#1F5A70 55%,#3E7C93 100%);color:#FFFFFF;padding:72px 0 64px">
+    <div style="max-width:1200px;margin:0 auto;padding:0 24px;display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center">
+      <span style="font-size:12px;font-weight:700;letter-spacing:.14em;color:#BFDCE4">MEET THE CAREGIVERS</span>
+      <h2 style="font-size:clamp(30px,4vw,46px);font-weight:600;letter-spacing:-.03em;line-height:1.1">The people visiting <em style="font-style:italic;color:#F2B872">your parents</em>.</h2>
+      <p style="font-size:16px;line-height:1.6;color:#DCEBEF;max-width:520px">They live close to the families they visit. Each one is interviewed, cleared and trained by our team before their first booking.</p>
+    </div>
+    <div class="cg-strip" style="display:flex;gap:16px;overflow-x:auto;padding:36px 24px 8px;scroll-snap-type:x mandatory">
+      ${CAREGIVERS.map(c=>`
+      <div style="flex:0 0 220px;height:300px;border-radius:20px;overflow:hidden;position:relative;background:#2A6680;scroll-snap-align:start;box-shadow:0 10px 30px rgba(0,0,0,.2)">
+        <div class="img-slot">Caregiver photo</div>
+        <div style="position:absolute;left:0;right:0;bottom:0;padding:40px 14px 14px;background:linear-gradient(180deg,rgba(14,52,70,0) 0%,rgba(14,52,70,.85) 100%);display:flex;flex-direction:column;gap:2px;pointer-events:none;text-align:left">
+          <span style="font-size:15px;font-weight:700">${esc(c.name)}</span>
+          <span style="font-size:12px;color:#DCEBEF">${esc(c.meta)}</span>
+        </div>
+      </div>`).join('')}
+    </div>
+    <div style="display:flex;justify-content:center;align-items:center;gap:10px;padding-top:24px;font-size:14px;color:#DCEBEF">
+      <span style="color:#F2B872;letter-spacing:2px">★★★★★</span><span>Every caregiver is rated by families after each visit</span>
+    </div>
+  </section>
+
+  <section id="how" style="max-width:1200px;width:100%;margin:0 auto;padding:88px 24px;display:flex;flex-direction:column;align-items:center;gap:40px">
+    <h2 style="font-size:clamp(30px,4vw,46px);font-weight:600;letter-spacing:-.03em;line-height:1.12;text-align:center;color:#0E3446">3 simple steps to<br><em style="font-style:italic;color:#3E7C93">peace of mind</em>, from anywhere.</h2>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:18px;width:100%;max-width:1000px">
+      <div style="background:#FFFFFF;border-radius:22px;padding:24px;display:flex;flex-direction:column;gap:12px;box-shadow:0 2px 12px rgba(14,42,56,.06)">
+        <span style="width:30px;height:30px;border-radius:50%;background:#E3EFF2;color:#0E3446;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center">01</span>
+        <h3 style="font-size:18px;font-weight:700;color:#0E3446">2-minute care match</h3>
+        <p style="font-size:15px;line-height:1.6;color:#2F4A57">Tell us who needs care, where they live, and what each visit should cover.</p>
+        <div style="margin-top:12px;height:170px;border-radius:16px;background:#F6F1E7;display:flex;align-items:flex-end;justify-content:center;overflow:hidden">
+          <div style="width:118px;height:150px;background:#FFFFFF;border:5px solid #0E3446;border-bottom:none;border-radius:18px 18px 0 0;padding:12px 10px;display:flex;flex-direction:column;gap:6px">
+            <span style="font-size:9px;font-weight:700;color:#3E7C93">kalinga</span>
+            <span style="font-size:11px;font-weight:700;line-height:1.2;color:#0E3446">Who are we <em style="color:#3E7C93">visiting?</em></span>
+            <span style="height:18px;border-radius:9px;background:#0E3446;color:#FFFFFF;font-size:8px;font-weight:700;display:flex;align-items:center;padding:0 8px">Nanay</span>
+            <span style="height:18px;border-radius:9px;border:1px solid #CFDDE2;font-size:8px;display:flex;align-items:center;padding:0 8px;color:#2F4A57">Tatay</span>
+            <span style="height:18px;border-radius:9px;border:1px solid #CFDDE2;font-size:8px;display:flex;align-items:center;padding:0 8px;color:#2F4A57">Lola</span>
+          </div>
+        </div>
+      </div>
+      <div style="background:#FFFFFF;border-radius:22px;padding:24px;display:flex;flex-direction:column;gap:12px;box-shadow:0 2px 12px rgba(14,42,56,.06)">
+        <span style="width:30px;height:30px;border-radius:50%;background:#E3EFF2;color:#0E3446;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center">02</span>
+        <h3 style="font-size:18px;font-weight:700;color:#0E3446">Choose your caregiver</h3>
+        <p style="font-size:15px;line-height:1.6;color:#2F4A57">Look through vetted caregivers near your parent and pick your dates. Once they accept, the booking is confirmed.</p>
+        <div style="margin-top:12px;height:170px;border-radius:16px;background:#F6F1E7;display:flex;align-items:center;justify-content:center;padding:16px">
+          <div style="width:100%;max-width:220px;background:#FFFFFF;border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:8px;box-shadow:0 6px 18px rgba(14,42,56,.1)">
+            <div style="display:flex;gap:8px;align-items:center"><span style="width:30px;height:30px;border-radius:50%;background:#0E3446;color:#FFFFFF;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center">JS</span><span style="display:flex;flex-direction:column"><span style="font-size:12px;font-weight:700;color:#0E3446">Joy Santos</span><span style="font-size:10px;color:#2F4A57">Jaro, Iloilo · 6 yrs</span></span></div>
+            <div style="display:flex;gap:4px;flex-wrap:wrap"><span style="font-size:9px;font-weight:700;background:#E3EFF2;color:#0E3446;padding:3px 7px;border-radius:999px">NBI cleared</span><span style="font-size:9px;font-weight:700;background:#E3EFF2;color:#0E3446;padding:3px 7px;border-radius:999px">CPR</span><span style="font-size:9px;font-weight:700;background:#E3EFF2;color:#0E3446;padding:3px 7px;border-radius:999px">NC II</span></div>
+            <span style="height:24px;border-radius:12px;background:#0E3446;color:#FFFFFF;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center">Request Tue &amp; Fri</span>
+          </div>
+        </div>
+      </div>
+      <div style="background:#FFFFFF;border-radius:22px;padding:24px;display:flex;flex-direction:column;gap:12px;box-shadow:0 2px 12px rgba(14,42,56,.06)">
+        <span style="width:30px;height:30px;border-radius:50%;background:#E3EFF2;color:#0E3446;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center">03</span>
+        <h3 style="font-size:18px;font-weight:700;color:#0E3446">See every visit, live</h3>
+        <p style="font-size:15px;line-height:1.6;color:#2F4A57">Each visit lands in your app with GPS times, photos and a checklist. Your siblings can see it too.</p>
+        <div style="margin-top:12px;height:170px;border-radius:16px;background:linear-gradient(160deg,#1F5A70,#0E3446);display:flex;flex-direction:column;justify-content:center;gap:8px;padding:16px">
+          <div style="background:rgba(255,255,255,.95);border-radius:12px;padding:9px 11px;display:flex;flex-direction:column;gap:2px"><span style="font-size:10px;font-weight:700;color:#3E7C93">KALINGA · now</span><span style="font-size:12px;font-weight:700;color:#0E3446">Joy checked out at 10:32 AM</span><span style="font-size:10px;color:#2F4A57">Meds ✓ · BP 128/82 · 2 photos</span></div>
+          <div style="background:rgba(255,255,255,.7);border-radius:12px;padding:9px 11px;display:flex;flex-direction:column;gap:2px"><span style="font-size:10px;font-weight:700;color:#3E7C93">KALINGA · 9:14 AM</span><span style="font-size:12px;font-weight:700;color:#0E3446">Joy arrived · GPS verified</span></div>
+        </div>
+      </div>
+    </div>
+    <span style="font-size:14px;color:#5C7480">Local caregivers. Proof after every visit. Pay from anywhere.</span>
+  </section>
+
+  <section id="visits" style="background:radial-gradient(120% 80% at 50% 0%,#CFE3E8 0%,#7FB0C2 45%,#2F6D85 100%);padding:88px 24px 72px">
+    <div style="max-width:1100px;margin:0 auto;display:flex;flex-direction:column;align-items:center;gap:40px">
+      <div style="display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center">
+        <h2 style="font-size:clamp(32px,4.4vw,50px);font-weight:600;letter-spacing:-.03em;color:#0E3446">Every visit, <em style="font-style:italic;color:#FFFFFF">on record</em>.</h2>
+        <p style="font-size:16px;color:#0E3446">This is what families see after each visit.</p>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:18px;width:100%">
+        ${VISITS.map(v=>`
+        <div style="background:#FFFFFF;border-radius:22px;padding:12px;display:flex;flex-direction:column;gap:14px;box-shadow:0 16px 40px rgba(14,42,56,.18)">
+          <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px">
+            <div style="position:relative;aspect-ratio:4/5;border-radius:14px;overflow:hidden;background:#E3EFF2">
+              <div class="img-slot">Arrival photo</div>
+              <span style="position:absolute;top:10px;left:10px;background:rgba(14,42,56,.8);color:#FFFFFF;font-size:11px;font-weight:700;padding:5px 10px;border-radius:999px;pointer-events:none">IN · ${esc(v.tin)}</span>
+            </div>
+            <div style="position:relative;aspect-ratio:4/5;border-radius:14px;overflow:hidden;background:#E3EFF2">
+              <div class="img-slot">Departure photo</div>
+              <span style="position:absolute;top:10px;left:10px;background:#0E3446;color:#FFFFFF;font-size:11px;font-weight:700;padding:5px 10px;border-radius:999px;pointer-events:none">OUT · ${esc(v.tout)}</span>
+            </div>
+          </div>
+          <div style="padding:2px 8px 10px;display:flex;flex-direction:column;gap:10px">
+            <div style="display:flex;flex-wrap:wrap;gap:6px">
+              ${v.tags.map(t=>`<span style="font-size:12px;font-weight:600;color:#0E3446;border:1px solid #CFDDE2;border-radius:999px;padding:4px 10px">✓ ${esc(t)}</span>`).join('')}
+            </div>
+            <p style="font-size:15px;line-height:1.6;color:#2F4A57">"${esc(v.note)}"</p>
+            <span style="font-size:13px;font-weight:700;color:#0E3446">— ${esc(v.by)}</span>
+          </div>
+        </div>`).join('')}
+      </div>
+      <span style="font-size:13px;color:#FFFFFF">Sample visit records. Records are locked once submitted.</span>
+    </div>
+  </section>
+
+  <section id="plans" style="max-width:1200px;width:100%;margin:0 auto;padding:88px 24px;display:flex;flex-direction:column;align-items:center;gap:44px">
+    <div style="display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center;max-width:640px">
+      <span style="font-size:12px;font-weight:700;letter-spacing:.14em;color:#3E7C93">CHOOSE YOUR PLAN</span>
+      <h2 style="font-size:clamp(32px,4.4vw,50px);font-weight:600;letter-spacing:-.03em;color:#0E3446">Three plans. <em style="font-style:italic;color:#3E7C93">One standard of care.</em></h2>
+      <p style="font-size:16px;line-height:1.6;color:#2F4A57">Every plan begins with a care match, and you choose your caregiver. You can switch plans whenever you need to.</p>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:20px;width:100%;max-width:1040px">
+      ${TIERS.map(t=>{
+        const f = t.id==='standard';
+        return `
+        <div style="background:#FFFFFF;border-radius:22px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 10px 30px rgba(14,42,56,.1)">
+          <div style="position:relative;height:150px;background:linear-gradient(160deg,#1F5A70,#0E3446);display:flex;align-items:flex-end;padding:18px">
+            <span style="font-size:48px;font-weight:700;letter-spacing:-.04em;color:rgba(255,255,255,.95);line-height:1">${t.big}</span>
+            <span style="font-size:14px;font-weight:600;color:#BFDCE4;padding:0 0 6px 8px">${t.bigSub}</span>
+          </div>
+          <div style="padding:22px;display:flex;flex-direction:column;gap:14px;flex:1">
+            <div style="display:flex;flex-direction:column;gap:4px">
+              <span style="font-size:12px;font-weight:700;letter-spacing:.14em;color:#0E3446">${t.code}</span>
+              <span style="font-size:15px;font-style:italic;color:#3E7C93">${t.tagline}</span>
+              <h3 style="font-size:22px;font-weight:700;color:#0E3446">${t.title}</h3>
+              <p style="font-size:14px;line-height:1.55;color:#2F4A57">${t.desc}</p>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:2px">
+              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="font-size:26px;font-weight:700;color:#0E3446">${PLANS[t.id].price}</span><span style="font-size:14px;color:#5C7480">/mo</span>
+                ${f?`<span style="background:#F2B872;color:#0E2A38;font-size:11px;font-weight:700;padding:4px 10px;border-radius:999px">MOST CHOSEN</span>`:''}
+              </div>
+              <span style="font-size:13px;color:#5C7480">${t.perDay}</span>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              ${t.feats.map(ft=>`<span style="font-size:13px;color:#0E3446;border:1px solid #DCE5E8;border-radius:999px;padding:8px 14px;display:flex;gap:8px"><span style="color:#3E7C93;font-weight:700">✓</span>${esc(ft)}</span>`).join('')}
+            </div>
+            <button data-act="openQuiz" data-arg="${t.id}" style="margin-top:auto;height:50px;border-radius:999px;border:${f?'none':'1.5px solid #0E3446'};background:${f?'#0E3446':'#FFFFFF'};color:${f?'#FFFFFF':'#0E3446'};font-size:15px;font-weight:700">Start ${PLANS[t.id].name} →</button>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>
+    <div style="width:100%;max-width:1040px;background:#FFFFFF;border-radius:22px;padding:22px 24px;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:16px 28px;align-items:center;box-shadow:0 2px 12px rgba(14,42,56,.06)">
+      <div style="display:flex;flex-direction:column;gap:4px">
+        <span style="font-size:12px;font-weight:700;letter-spacing:.14em;color:#3E7C93">OPTIONAL ADD-ONS</span>
+        <span style="font-size:17px;font-weight:700;color:#0E3446">Safety devices for <em style="color:#3E7C93">any plan</em></span>
+        <span style="font-size:13px;color:#5C7480">Pay in full, or in installments over 3, 6 or 12 months</span>
+      </div>
+      ${HARDWARE.map(h=>`
+      <div style="display:flex;flex-direction:column;gap:3px;border-left:2px solid #E3EFF2;padding-left:14px">
+        <span style="font-size:15px;font-weight:700;color:#0E3446">${esc(h.t)}</span>
+        <span style="font-size:13px;line-height:1.5;color:#2F4A57">${esc(h.b)}</span>
+      </div>`).join('')}
+    </div>
+  </section>
+
+  <section style="background:linear-gradient(180deg,#0B2533 0%,#0E3446 100%);color:#FFFFFF">
+    <div style="max-width:1100px;margin:0 auto;padding:88px 24px;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:48px;align-items:center">
+      <div style="display:flex;flex-direction:column;gap:18px">
+        <span style="font-size:12px;font-weight:700;letter-spacing:.14em;color:#BFDCE4">A NOTE FROM OUR FOUNDER</span>
+        <h2 style="font-size:clamp(30px,4vw,46px);font-weight:600;letter-spacing:-.03em;line-height:1.12">Why we built <em style="font-style:italic;color:#F2B872">Kalinga</em>.</h2>
+        <p style="font-size:16px;line-height:1.75;color:#DCEBEF">Millions of Filipinos work abroad to support the family back home. What many of us are missing is a way to know our parents are okay on the days we can't call. The relatives nearby help when they can, but their schedules change and you rarely get the full picture.</p>
+        <p style="font-size:16px;line-height:1.75;color:#DCEBEF">Kalinga is built on one simple promise. A person you've chosen and we've vetted visits on the days you set, and after every visit you get a record you can trust. If they can't make it, we send a backup. If something's wrong, you hear about it first.</p>
+        <div style="display:flex;flex-direction:column;gap:2px;padding-top:6px">
+          <span style="font-size:17px;font-weight:700">Trixie Chan</span>
+          <span style="font-size:14px;color:#BFDCE4">Founder, Kalinga</span>
+        </div>
+      </div>
+      <div style="position:relative;aspect-ratio:4/5;max-height:540px;border-radius:24px;overflow:hidden;background:#1F5A70;box-shadow:0 24px 60px rgba(0,0,0,.35)">
+        <div class="img-slot">Founder portrait</div>
+      </div>
+    </div>
+  </section>
+
+  <section style="position:relative;background:linear-gradient(180deg,#1F5A70 0%,#2F6D85 100%);color:#FFFFFF;overflow:hidden">
+    <div style="position:absolute;inset:0;opacity:.35"><div class="img-slot">Optional background: Philippine sea or sunset</div></div>
+    <div style="position:relative;max-width:760px;margin:0 auto;padding:88px 24px;display:flex;flex-direction:column;align-items:center;gap:18px;text-align:center;pointer-events:none">
+      <div style="width:86px;height:96px;background:#0E3446;border:2px solid #BFDCE4;clip-path:polygon(50% 0,100% 18%,100% 62%,50% 100%,0 62%,0 18%);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0">
+        <span style="font-size:11px;font-weight:700;letter-spacing:.1em;color:#BFDCE4">MISSED</span>
+        <span style="font-size:11px;font-weight:700;letter-spacing:.1em;color:#BFDCE4">VISIT</span>
+        <span style="font-size:13px;font-weight:700;color:#F2B872">FREE</span>
+      </div>
+      <span style="font-size:12px;font-weight:700;letter-spacing:.14em;color:#DCEBEF">OUR PROMISE</span>
+      <h2 style="font-size:clamp(32px,4.4vw,50px);font-weight:600;letter-spacing:-.03em;line-height:1.1">A visit missed? <em style="font-style:italic;color:#F2B872">The next one's on us.</em></h2>
+      <p style="font-size:16px;line-height:1.65;color:#EAF3F5;max-width:560px">If your caregiver cancels, we'll send a vetted backup and let you know right away. If no one can make it, your next visit is free. You don't need to file a claim or argue about it.</p>
+      <div style="display:flex;flex-wrap:wrap;justify-content:center;gap:8px;padding-top:6px">
+        ${PROMISES.map(p=>`<span style="background:#FFFFFF;color:#0E3446;font-size:13px;font-weight:600;padding:8px 14px;border-radius:999px">✓ ${esc(p)}</span>`).join('')}
+      </div>
+      <span style="font-size:14px;color:#EAF3F5">Questions? Email <span style="text-decoration:underline">hello@kalinga.ph</span> and a person will reply.</span>
+    </div>
+  </section>
+
+  <section id="faq" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,480px),1fr));background:#F6F1E7">
+    <div style="padding:64px clamp(24px,5vw,72px);display:flex;flex-direction:column;gap:20px;max-width:680px;width:100%">
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <span style="font-size:12px;font-weight:700;letter-spacing:.14em;color:#3E7C93">QUESTIONS</span>
+        <h2 style="font-size:clamp(26px,3vw,34px);font-weight:600;letter-spacing:-.02em;color:#0E3446">Frequently asked <em style="font-style:italic;color:#3E7C93">questions</em>.</h2>
+      </div>
+      <div style="display:flex;flex-direction:column">
+        ${FAQS.map((f,i)=>`
+        <div style="border-top:1px solid #DED6C7">
+          <button data-act="faqToggle" data-arg="${i}" style="width:100%;background:transparent;border:none;padding:18px 0;display:flex;justify-content:space-between;gap:16px;text-align:left;color:#0E3446;align-items:center">
+            <span style="font-size:15px;font-weight:600;line-height:1.4">${esc(f[0])}</span>
+            <span style="font-size:20px;color:#3E7C93;flex-shrink:0">${s.faqOpen===i?'−':'+'}</span>
+          </button>
+          ${s.faqOpen===i?`<p style="font-size:15px;line-height:1.65;color:#2F4A57;padding:0 32px 18px 0">${esc(f[1])}</p>`:''}
+        </div>`).join('')}
+      </div>
+      <span style="font-size:14px;color:#2F4A57">Still have questions? <a href="mailto:hello@kalinga.ph" style="font-weight:700;text-decoration:underline">Message us</a> or <button data-act="openQuiz" style="background:none;border:none;padding:0;font-size:14px;font-weight:700;color:#0E3446;text-decoration:underline">start a care match</button>.</span>
+    </div>
+    <div style="position:relative;min-height:440px;background:#E7DFD0">
+      <div class="img-slot">Lifestyle photo: an elderly parent's home, tea, medicine organizer, family photos</div>
+    </div>
+  </section>
+
+  <section id="join" style="background:#FFFFFF;padding:88px 24px">
+    <div style="max-width:1100px;margin:0 auto;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:48px;align-items:center">
+      <div style="display:flex;flex-direction:column;gap:18px">
+        <span style="font-size:12px;font-weight:700;letter-spacing:.14em;color:#3E7C93">FOR CAREGIVERS AND NURSES</span>
+        <h2 style="margin:0;font-size:clamp(30px,4vw,46px);font-weight:600;letter-spacing:-.03em;line-height:1.12;color:#0E3446">Care for lolos and lolas <em style="font-style:italic;color:#3E7C93">near you</em>.</h2>
+        <p style="margin:0;font-size:17px;line-height:1.6;color:#2F4A57">Work in your own barangay on a schedule you choose. Kalinga sends you visits, pays you every week through GCash, and gives every caregiver free first-aid and dementia-care training.</p>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          ${JOIN_PERKS.map(p=>`<div style="display:flex;gap:12px;align-items:flex-start"><span style="width:24px;height:24px;border-radius:50%;background:#E3EFF2;color:#0E3446;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">✓</span><span style="font-size:16px;line-height:1.5;color:#0E2A38">${esc(p)}</span></div>`).join('')}
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:12px;padding-top:6px">
+          <button data-act="openApply" style="height:56px;padding:0 28px;border-radius:999px;border:none;background:#0E3446;color:#FFFFFF;font-size:16px;font-weight:700;box-shadow:0 10px 24px rgba(14,52,70,.25)">Apply as a caregiver →</button>
+          <button data-act="openCgLogin" style="height:56px;padding:0 24px;border-radius:999px;border:1.5px solid #0E3446;background:transparent;color:#0E3446;font-size:16px;font-weight:700">I already work with Kalinga</button>
+        </div>
+      </div>
+      <div style="background:#F6F1E7;border-radius:28px;padding:28px;display:flex;flex-direction:column;gap:6px">
+        <span style="font-size:13px;font-weight:700;letter-spacing:.08em;color:#3E7C93;padding-bottom:10px">HOW TO JOIN</span>
+        ${JOIN_STEPS.map((j,i)=>`
+        <div style="display:grid;grid-template-columns:44px 1fr;gap:14px;padding:12px 0;border-bottom:${i<3?'1px solid #E7DFD0':'none'}">
+          <span style="width:44px;height:44px;border-radius:14px;background:#0E3446;color:#FFFFFF;font-size:16px;font-weight:700;display:flex;align-items:center;justify-content:center">${j[0]}</span>
+          <div style="display:flex;flex-direction:column;gap:2px"><span style="font-size:17px;font-weight:700;color:#0E3446">${esc(j[1])}</span><span style="font-size:14px;line-height:1.5;color:#2F4A57">${esc(j[2])}</span></div>
+        </div>`).join('')}
+      </div>
+    </div>
+  </section>
+
+  ${a.open ? renderApplyModal(a) : ''}
+
+  <footer style="background:linear-gradient(135deg,#2F6D85 0%,#0E3446 55%,#0B2533 100%);color:#FFFFFF">
+    <div style="max-width:1100px;margin:0 auto;padding:64px 24px 32px;display:flex;flex-direction:column;gap:40px">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr));gap:32px">
+        <div style="display:flex;flex-direction:column;gap:14px">
+          <span style="font-size:58px;font-weight:700;letter-spacing:-.05em;line-height:1">kalinga</span>
+          <p style="font-size:14px;line-height:1.6;color:#DCEBEF;max-width:280px">Scheduled caregiver visits for elderly parents in the Philippines. Local, vetted and fully on record.</p>
+        </div>
+        ${FOOT_COLS.map(col=>`
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <span style="font-size:14px;font-weight:700">${esc(col.h)}</span>
+          ${col.links.map(l=>`<a href="${l.href}" style="color:#DCEBEF;font-size:14px">${esc(l.t)}</a>`).join('')}
+        </div>`).join('')}
+      </div>
+      <p style="font-size:12px;line-height:1.65;color:#BFDCE4;border-top:1px solid rgba(255,255,255,.15);padding-top:24px">Kalinga arranges scheduled check-in visits by independent, vetted caregivers. These visits are not medical care. Kalinga is not a medical provider or an emergency service, so in an emergency call 911. We handle personal and health information in line with the Philippine Data Privacy Act of 2012 (RA 10173).</p>
+      <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px;font-size:12px;color:#BFDCE4">
+        <span>© 2026 Kalinga. All rights reserved.</span>
+        <span style="display:flex;gap:18px"><a href="#" style="color:#BFDCE4">Privacy</a><a href="#" style="color:#BFDCE4">Terms</a><span>hello@kalinga.ph</span></span>
+      </div>
+    </div>
+  </footer>
+
+  ${s.loginOpen ? renderLoginModal(lg) : ''}
+  ${s.quizOpen ? renderQuizModal(q, plan) : ''}
+
+  </div>`;
+
+  document.getElementById('app').innerHTML = html;
+  bindInputs();
+}
+
+function renderApplyModal(a){
+  const stepLabel = a.step===2 ? 'Application sent' : 'Caregiver application · '+(a.step+1)+' of 2';
+  const nextLabel = a.step===1 ? 'Submit application' : 'Next';
+  const first = a.name.trim().split(' ')[0] || '';
+  const docsList = AP_DOCS.filter(d=>d.id!=='prc' || a.role==='nurse').filter(d=>d.id!=='tesda' || a.role!=='nurse');
+  return `
+  <div style="position:fixed;inset:0;z-index:70;background:rgba(11,37,51,.6);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:16px">
+    <div style="background:#F6F1E7;border-radius:26px;max-width:480px;width:100%;max-height:92vh;overflow:auto;padding:24px;display:flex;flex-direction:column;gap:18px;box-shadow:0 30px 80px rgba(0,0,0,.35)">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:14px;font-weight:700;color:#3E7C93">${stepLabel}</span>
+        <button data-act="closeApply" style="width:40px;height:40px;border-radius:50%;border:none;background:#FFFFFF;font-size:18px;color:#0E3446">×</button>
+      </div>
+      ${a.step===0?`
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <h3 style="margin:0;font-size:26px;font-weight:600;letter-spacing:-.02em;color:#0E3446">Tell us about <em style="font-style:italic;color:#3E7C93">you</em>.</h3>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+          ${[['caregiver','Caregiver','TESDA NC II or experience'],['nurse','Nurse','PRC-licensed RN']].map(([id,label,sub])=>`
+          <button data-act="apRole" data-arg="${id}" style="min-height:64px;border-radius:16px;border:${a.role===id?'2px solid #0E3446':'1.5px solid #DED6C7'};background:#FFFFFF;color:#0E3446;font-size:15px;font-weight:700;padding:10px;display:flex;flex-direction:column;gap:2px;align-items:center;justify-content:center">${label}<span style="font-size:12px;font-weight:500;color:#2F4A57">${sub}</span></button>`).join('')}
+        </div>
+        <label style="display:flex;flex-direction:column;gap:6px"><span style="font-size:13px;font-weight:700;color:#0E3446">Full name</span><input id="ap_name" value="${esc(a.name)}" placeholder="Joy Santos" style="height:50px;border-radius:14px;border:1.5px solid #DED6C7;background:#FFFFFF;padding:0 16px;font-size:16px;outline:none;color:#0E2A38;font-family:inherit"></label>
+        <label style="display:flex;flex-direction:column;gap:6px"><span style="font-size:13px;font-weight:700;color:#0E3446">Mobile number</span><input id="ap_phone" value="${esc(a.phone)}" placeholder="09XX XXX XXXX" inputmode="tel" style="height:50px;border-radius:14px;border:1.5px solid #DED6C7;background:#FFFFFF;padding:0 16px;font-size:16px;outline:none;color:#0E2A38;font-family:inherit"></label>
+        <label style="display:flex;flex-direction:column;gap:6px"><span style="font-size:13px;font-weight:700;color:#0E3446">City or municipality</span><input id="ap_city" value="${esc(a.city)}" placeholder="Jaro, Iloilo City" style="height:50px;border-radius:14px;border:1.5px solid #DED6C7;background:#FFFFFF;padding:0 16px;font-size:16px;outline:none;color:#0E2A38;font-family:inherit"></label>
+        <span style="font-size:13px;font-weight:700;color:#0E3446">Years of caregiving experience</span>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">
+          ${['<1','1–3','3–5','5+'].map(l=>`<button data-act="apYrs" data-arg="${l}" style="height:46px;border-radius:12px;border:none;background:${a.yrs===l?'#0E3446':'#FFFFFF'};color:${a.yrs===l?'#FFFFFF':'#0E3446'};font-size:14px;font-weight:700">${l}</button>`).join('')}
+        </div>
+      </div>`:''}
+      ${a.step===1?`
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <h3 style="margin:0;font-size:26px;font-weight:600;letter-spacing:-.02em;color:#0E3446">Upload your <em style="font-style:italic;color:#3E7C93">documents</em>.</h3>
+        <p style="margin:0;font-size:14px;line-height:1.5;color:#2F4A57">Take a clear photo of each one. You can send the optional ones later.</p>
+        ${docsList.map(d=>{ const on = a.docs.includes(d.id); return `
+        <button data-act="apDoc" data-arg="${d.id}" style="min-height:60px;border-radius:16px;border:${on?'1.5px solid #0E3446':'1.5px solid #DED6C7'};background:#FFFFFF;padding:10px 14px;display:flex;align-items:center;gap:12px;text-align:left;color:#0E2A38">
+          <span style="width:34px;height:34px;border-radius:10px;background:${on?'#0E3446':'#E3EFF2'};color:${on?'#FFFFFF':'#0E3446'};font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">${on?'✓':'+'}</span>
+          <span style="flex:1;display:flex;flex-direction:column"><span style="font-size:15px;font-weight:700">${esc(d.t)}</span><span style="font-size:12px;color:#2F4A57">${d.req?'Required':'Optional'}</span></span>
+          <span style="font-size:13px;font-weight:700;color:#3E7C93">${on?'Uploaded':'Upload'}</span>
+        </button>`; }).join('')}
+      </div>`:''}
+      ${a.step===2?`
+      <div style="display:flex;flex-direction:column;gap:14px;align-items:flex-start">
+        <span style="width:64px;height:64px;border-radius:22px;background:#E3EFF2;color:#0E3446;font-size:28px;font-weight:700;display:flex;align-items:center;justify-content:center">✓</span>
+        <h3 style="margin:0;font-size:26px;font-weight:600;letter-spacing:-.02em;color:#0E3446">Salamat, ${esc(first)}! We got your application.</h3>
+        <p style="margin:0;font-size:15px;line-height:1.6;color:#2F4A57">We'll text ${esc(a.phone)} within 3 working days to book your interview and orientation in ${esc(a.city)}. Your reference number is <strong>${esc(a.ref)}</strong>.</p>
+        <div style="background:#FFFFFF;border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:10px;width:100%">
+          <span style="font-size:14px;font-weight:700;color:#0E3446">While you wait, get the Kalinga app</span>
+          <span style="font-size:13px;line-height:1.5;color:#2F4A57">Log in with your mobile number to follow your application, finish the free training and see visits once you're approved.</span>
+          <div style="display:flex;flex-wrap:wrap;gap:8px">
+            <a href="#" style="height:44px;padding:0 16px;border-radius:12px;background:#0E2A38;color:#FFFFFF;font-size:13px;font-weight:700;display:flex;align-items:center;text-decoration:none">App Store</a>
+            <a href="#" style="height:44px;padding:0 16px;border-radius:12px;background:#0E2A38;color:#FFFFFF;font-size:13px;font-weight:700;display:flex;align-items:center;text-decoration:none">Google Play</a>
+            <button data-act="apToApp" style="height:44px;padding:0 16px;border-radius:12px;border:1.5px solid #0E3446;background:transparent;color:#0E3446;font-size:13px;font-weight:700">Continue in web app →</button>
+          </div>
+        </div>
+      </div>`:''}
+      ${a.err?`<span style="color:#B3261E;font-size:14px;font-weight:700">${esc(a.err)}</span>`:''}
+      ${a.step<2?`
+      <div style="display:flex;gap:10px">
+        ${a.step===1?`<button data-act="apBack" style="height:52px;padding:0 20px;border-radius:999px;border:1.5px solid #0E3446;background:transparent;color:#0E3446;font-size:15px;font-weight:700">Back</button>`:''}
+        <button data-act="apNext" style="flex:1;height:52px;border-radius:999px;border:none;background:#0E3446;color:#FFFFFF;font-size:15px;font-weight:700">${nextLabel}</button>
+      </div>`:''}
+    </div>
+  </div>`;
+}
+
+function renderLoginModal(lg){
+  const idPh = lg.role==='caregiver' ? '09XX XXX XXXX' : 'maria@email.com';
+  const lgNewLabel = lg.role==='caregiver' ? 'Start a care match' : 'Apply as a caregiver';
+  return `
+  <div style="position:fixed;inset:0;z-index:70;background:rgba(11,37,51,.6);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:16px">
+    <div style="background:#F6F1E7;border-radius:26px;max-width:440px;width:100%;max-height:92vh;overflow:auto;padding:24px;display:flex;flex-direction:column;gap:18px;box-shadow:0 30px 80px rgba(0,0,0,.35)">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:20px;font-weight:700;letter-spacing:-.03em;color:#0E3446">kalinga</span>
+        <button data-act="closeLogin" style="width:40px;height:40px;border-radius:50%;border:none;background:#FFFFFF;font-size:18px;color:#0E3446">×</button>
+      </div>
+      ${lg.mode==='form'?`
+      <div style="display:flex;flex-direction:column;gap:16px">
+        <h3 style="font-size:28px;font-weight:600;letter-spacing:-.02em;color:#0E3446">Welcome <em style="font-style:italic;color:#3E7C93">back</em>.</h3>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;background:#E7DFD0;border-radius:999px;padding:4px">
+          ${[['family','Family'],['caregiver','Caregiver']].map(([id,label])=>`<button data-act="lgRole" data-arg="${id}" style="height:42px;border-radius:999px;border:none;background:${lg.role===id?'#0E3446':'transparent'};color:${lg.role===id?'#FFFFFF':'#0E3446'};font-size:14px;font-weight:700">${label}</button>`).join('')}
+        </div>
+        <label style="display:flex;flex-direction:column;gap:6px"><span style="font-size:13px;font-weight:700;color:#0E3446">Email or mobile number</span>
+          <input id="lg_id" value="${esc(lg.id)}" placeholder="${idPh}" style="height:50px;border-radius:14px;border:1.5px solid #DED6C7;background:#FFFFFF;padding:0 16px;font-size:16px;outline:none;color:#0E2A38;font-family:inherit"></label>
+        <label style="display:flex;flex-direction:column;gap:6px"><span style="font-size:13px;font-weight:700;color:#0E3446">Password</span>
+          <input id="lg_pw" type="password" value="${esc(lg.pw)}" placeholder="••••••••" style="height:50px;border-radius:14px;border:1.5px solid #DED6C7;background:#FFFFFF;padding:0 16px;font-size:16px;outline:none;color:#0E2A38;font-family:inherit"></label>
+        ${lg.err?`<span style="color:#B3261E;font-size:14px;font-weight:700">${esc(lg.err)}</span>`:''}
+        <button data-act="submitLogin" style="height:52px;border-radius:999px;border:none;background:#0E3446;color:#FFFFFF;font-size:15px;font-weight:700">Log in</button>
+        <button data-act="sendOtp" style="height:48px;border-radius:999px;border:1.5px solid #0E3446;background:transparent;color:#0E3446;font-size:14px;font-weight:700">Send me a one-time code instead</button>
+        <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:13px">
+          <button data-act="forgotPw" style="background:none;border:none;padding:0;color:#3E7C93;font-size:13px;font-weight:700">Forgot password?</button>
+          <span style="color:#2F4A57">New here? <button data-act="lgNew" style="background:none;border:none;padding:0;color:#0E3446;font-size:13px;font-weight:700;text-decoration:underline">${lgNewLabel}</button></span>
+        </div>
+        <span style="font-size:12px;color:#5C7480;line-height:1.5">Demo: any email and a password of 6+ characters will work.</span>
+      </div>`:''}
+      ${lg.mode==='otp'?`
+      <div style="display:flex;flex-direction:column;gap:16px">
+        <h3 style="font-size:26px;font-weight:600;letter-spacing:-.02em;color:#0E3446">Check your <em style="font-style:italic;color:#3E7C93">messages</em>.</h3>
+        <p style="font-size:15px;line-height:1.55;color:#2F4A57">We sent a 6-digit code to ${esc(lg.id)}.</p>
+        <input id="lg_code" value="${esc(lg.code)}" placeholder="123456" inputmode="numeric" maxlength="6" style="height:56px;border-radius:14px;border:1.5px solid #DED6C7;background:#FFFFFF;padding:0 16px;font-size:24px;letter-spacing:.3em;text-align:center;outline:none;color:#0E2A38;font-family:inherit">
+        ${lg.err?`<span style="color:#B3261E;font-size:14px;font-weight:700">${esc(lg.err)}</span>`:''}
+        <button data-act="verifyOtp" style="height:52px;border-radius:999px;border:none;background:#0E3446;color:#FFFFFF;font-size:15px;font-weight:700">Verify and log in</button>
+        <button data-act="lgBack" style="background:none;border:none;padding:0;color:#3E7C93;font-size:14px;font-weight:700">← Use password instead</button>
+      </div>`:''}
+      ${lg.mode==='loading'?`<p style="font-size:20px;font-weight:600;padding:28px 0;color:#0E3446">Signing you in…</p>`:''}
+      ${lg.info?`<span style="background:#E3EFF2;color:#0E3446;font-size:14px;font-weight:600;padding:12px 14px;border-radius:14px;line-height:1.45">${esc(lg.info)}</span>`:''}
+    </div>
+  </div>`;
+}
+
+function renderQuizModal(q, plan){
+  const stepLabel = q.step<4 ? 'STEP '+(q.step+1)+' OF 4' : 'DONE';
+  const progress = (q.step>=4?100:(q.step+1)/4*100)+'%';
+  const nextLabel = q.step===3 ? 'See my matches →' : 'Continue';
+  const canBack = q.step>0 && !q.sending;
+  const whoLabel = (WHO.find(w=>w[0]===q.who)||[,'your parent'])[1];
+  const areaLabel = q.area==='other' ? 'their area' : (AREAS.find(a=>a[0]===q.area)||[,'their area'])[1];
+  const needsSummary = q.needs.map(n=>(NEEDS.find(x=>x[0]===n)||[,''])[1].toLowerCase()).join(', ');
+  const firstName = q.name.trim().split(' ')[0] || '';
+  return `
+  <div style="position:fixed;inset:0;z-index:60;background:rgba(11,37,51,.6);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:16px">
+    <div style="background:#F6F1E7;border-radius:26px;max-width:560px;width:100%;max-height:92vh;overflow:auto;display:flex;flex-direction:column;box-shadow:0 30px 80px rgba(0,0,0,.35)">
+      <div style="padding:20px 24px 0;display:flex;flex-direction:column;gap:14px">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:20px;font-weight:700;letter-spacing:-.03em;color:#0E3446">kalinga</span>
+          <span style="font-size:12px;font-weight:700;letter-spacing:.12em;color:#3E7C93">${stepLabel}</span>
+          <button data-act="closeQuiz" style="width:40px;height:40px;border-radius:50%;border:none;background:#FFFFFF;font-size:18px;color:#0E3446">×</button>
+        </div>
+        <div style="height:5px;border-radius:3px;background:#E3DCCD;overflow:hidden"><div style="height:100%;width:${progress};background:#0E3446;border-radius:3px;transition:width .3s"></div></div>
+      </div>
+      <div style="padding:26px 24px;display:flex;flex-direction:column;gap:16px">
+        ${(q.step===0 && !q.sending)?`
+        <h3 style="font-size:28px;font-weight:600;letter-spacing:-.02em;line-height:1.15;color:#0E3446">Who are we <em style="font-style:italic;color:#3E7C93">visiting</em>?</h3>
+        <div style="display:flex;flex-wrap:wrap;gap:8px">
+          ${WHO.map(([id,label])=>`<button data-act="qWho" data-arg="${id}" style="height:48px;padding:0 20px;border-radius:999px;border:1.5px solid ${q.who===id?'#0E3446':'#DED6C7'};background:${q.who===id?'#0E3446':'#FFFFFF'};color:${q.who===id?'#FFFFFF':'#0E3446'};font-size:15px;font-weight:600">${label}</button>`).join('')}
+        </div>
+        <span style="font-size:15px;font-weight:700;color:#0E3446;padding-top:6px">Where do they live?</span>
+        <div style="display:flex;flex-wrap:wrap;gap:8px">
+          ${AREAS.map(([id,label])=>`<button data-act="qArea" data-arg="${id}" style="height:48px;padding:0 20px;border-radius:999px;border:1.5px solid ${q.area===id?'#0E3446':'#DED6C7'};background:${q.area===id?'#0E3446':'#FFFFFF'};color:${q.area===id?'#FFFFFF':'#0E3446'};font-size:15px;font-weight:600">${label}</button>`).join('')}
+        </div>`:''}
+        ${(q.step===1 && !q.sending)?`
+        <h3 style="font-size:28px;font-weight:600;letter-spacing:-.02em;line-height:1.15;color:#0E3446">What should visits <em style="font-style:italic;color:#3E7C93">cover</em>?</h3>
+        <span style="font-size:14px;color:#5C7480">Choose all that apply.</span>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          ${NEEDS.map(([id,label])=>{ const on=q.needs.includes(id); return `
+          <button data-act="qNeed" data-arg="${id}" style="min-height:52px;border-radius:16px;border:1.5px solid ${on?'#0E3446':'#DED6C7'};background:#FFFFFF;display:flex;justify-content:space-between;align-items:center;gap:12px;text-align:left;color:#0E3446;padding:0 16px">
+            <span style="font-size:15px;font-weight:600">${label}</span>
+            <span style="width:22px;height:22px;border-radius:50%;border:1.5px solid #0E3446;background:${on?'#0E3446':'#FFFFFF'};color:#FFFFFF;font-size:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0">${on?'✓':''}</span>
+          </button>`; }).join('')}
+        </div>`:''}
+        ${(q.step===2 && !q.sending)?`
+        <h3 style="font-size:28px;font-weight:600;letter-spacing:-.02em;line-height:1.15;color:#0E3446">How <em style="font-style:italic;color:#3E7C93">often</em> should someone visit?</h3>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          ${Object.entries(PLANS).map(([id,p])=>`
+          <button data-act="qPlan" data-arg="${id}" style="min-height:72px;border-radius:18px;border:1.5px solid ${q.plan===id?'#0E3446':'#DED6C7'};background:${q.plan===id?'#0E3446':'#FFFFFF'};display:flex;justify-content:space-between;align-items:center;gap:12px;text-align:left;color:${q.plan===id?'#FFFFFF':'#0E3446'};padding:0 18px">
+            <span style="display:flex;flex-direction:column;gap:2px"><span style="font-size:16px;font-weight:700">${p.name}</span><span style="font-size:13px;opacity:.85">${p.freq}</span></span>
+            <span style="font-size:18px;font-weight:700">${p.price}</span>
+          </button>`).join('')}
+        </div>`:''}
+        ${(q.step===3 && !q.sending)?`
+        <h3 style="font-size:28px;font-weight:600;letter-spacing:-.02em;line-height:1.15;color:#0E3446">Where should we send your <em style="font-style:italic;color:#3E7C93">matches</em>?</h3>
+        <label style="display:flex;flex-direction:column;gap:6px"><span style="font-size:13px;font-weight:700;color:#0E3446">Your full name</span><input id="q_name" value="${esc(q.name)}" placeholder="Maria Dela Cruz" style="height:50px;border-radius:14px;border:1.5px solid #DED6C7;background:#FFFFFF;padding:0 16px;font-size:16px;outline:none;color:#0E2A38;font-family:inherit"></label>
+        <label style="display:flex;flex-direction:column;gap:6px"><span style="font-size:13px;font-weight:700;color:#0E3446">Email</span><input id="q_email" value="${esc(q.email)}" placeholder="maria@email.com" style="height:50px;border-radius:14px;border:1.5px solid #DED6C7;background:#FFFFFF;padding:0 16px;font-size:16px;outline:none;color:#0E2A38;font-family:inherit"></label>
+        <label style="display:flex;flex-direction:column;gap:6px"><span style="font-size:13px;font-weight:700;color:#0E3446">Mobile number (with country code)</span><input id="q_phone" value="${esc(q.phone)}" placeholder="+971 50 123 4567" style="height:50px;border-radius:14px;border:1.5px solid #DED6C7;background:#FFFFFF;padding:0 16px;font-size:16px;outline:none;color:#0E2A38;font-family:inherit"></label>
+        <label style="display:flex;flex-direction:column;gap:6px"><span style="font-size:13px;font-weight:700;color:#0E3446">Where you live now</span><input id="q_country" value="${esc(q.country)}" placeholder="Dubai, UAE" style="height:50px;border-radius:14px;border:1.5px solid #DED6C7;background:#FFFFFF;padding:0 16px;font-size:16px;outline:none;color:#0E2A38;font-family:inherit"></label>
+        <button data-act="qTos" style="display:flex;gap:12px;align-items:flex-start;background:transparent;border:none;padding:4px 0 0;text-align:left;color:#0E3446">
+          <span style="width:22px;height:22px;border-radius:6px;border:1.5px solid #0E3446;background:${q.tos?'#0E3446':'#FFFFFF'};color:#FFFFFF;font-size:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0">${q.tos?'✓':''}</span>
+          <span style="font-size:14px;line-height:1.5">I agree to the Terms of Service and Privacy Policy, including emergency protocol consent.</span>
+        </button>`:''}
+        ${q.step===4?`
+        <h3 style="font-size:32px;font-weight:600;letter-spacing:-.02em;line-height:1.15;color:#0E3446">Salamat, <em style="font-style:italic;color:#3E7C93">${esc(firstName)}</em>.</h3>
+        <p style="font-size:16px;line-height:1.6;color:#2F4A57">We're matching caregivers for ${esc(whoLabel)} in ${esc(areaLabel)}. Within 24 hours we'll email up to 3 profiles to ${esc(q.email)}, and you choose who visits.</p>
+        <div style="background:#FFFFFF;border-radius:20px;overflow:hidden;box-shadow:0 8px 24px rgba(14,42,56,.1)">
+          <div style="background:linear-gradient(160deg,#1F5A70,#0E3446);color:#FFFFFF;padding:14px 18px;font-size:12px;font-weight:700;letter-spacing:.12em">SUGGESTED PLAN</div>
+          <div style="padding:16px 18px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+            <span style="display:flex;flex-direction:column;gap:2px"><span style="font-size:18px;font-weight:700;color:#0E3446">${plan.name}</span><span style="font-size:13px;color:#5C7480">${plan.freq}</span></span>
+            <span style="font-size:24px;font-weight:700;color:#0E3446">${plan.price}<span style="font-size:13px;font-weight:500;color:#5C7480">/mo</span></span>
+          </div>
+        </div>
+        <span style="font-size:14px;line-height:1.55;color:#5C7480">Covers ${esc(needsSummary)}.</span>
+        <a href="#" data-act="appContinue" style="height:54px;border-radius:999px;background:#0E3446;color:#FFFFFF;font-size:16px;font-weight:700;display:flex;align-items:center;justify-content:center">Continue to the app →</a>`:''}
+        ${q.sending?`<p style="font-size:24px;font-weight:600;line-height:1.3;padding:32px 0;color:#0E3446">Finding caregivers near <em style="font-style:italic;color:#3E7C93">${esc(areaLabel)}</em>…</p>`:''}
+        ${q.err?`<span style="color:#B3261E;font-size:14px;font-weight:700">${esc(q.err)}</span>`:''}
+      </div>
+      ${(q.step<4 && !q.sending)?`
+      <div style="padding:0 24px 24px;display:flex;gap:10px;align-items:center">
+        ${canBack?`<button data-act="quizBack" style="height:52px;padding:0 20px;border-radius:999px;border:1.5px solid #0E3446;background:transparent;color:#0E3446;font-size:15px;font-weight:700">Back</button>`:''}
+        <button data-act="quizNext" style="flex:1;height:52px;border-radius:999px;border:none;background:#0E3446;color:#FFFFFF;font-size:15px;font-weight:700">${nextLabel}</button>
+      </div>`:''}
+    </div>
+  </div>`;
+}
+
+/* ---------- event delegation ---------- */
+document.addEventListener('click', function(e){
+  const el = e.target.closest('[data-act]');
+  if (!el) return;
+  e.preventDefault();
+  const act = el.getAttribute('data-act');
+  const arg = el.getAttribute('data-arg');
+  switch(act){
+    case 'openQuiz': openQuiz(arg); break;
+    case 'closeQuiz': closeQuiz(); break;
+    case 'openLogin': openLogin(); break;
+    case 'closeLogin': closeLogin(); break;
+    case 'openApply': openApply(); break;
+    case 'closeApply': closeApply(); break;
+    case 'openCgLogin': openCgLogin(); break;
+    case 'faqToggle': setState(s=>({faqOpen: s.faqOpen===Number(arg) ? -1 : Number(arg)})); break;
+    case 'apRole': setAp({role:arg}); break;
+    case 'apYrs': setAp({yrs:arg}); break;
+    case 'apDoc': setAp(a=>({docs: a.docs.includes(arg) ? a.docs.filter(x=>x!==arg) : [...a.docs, arg]})); break;
+    case 'apNext': apNext(); break;
+    case 'apBack': apBack(); break;
+    case 'apToApp': apToApp(); break;
+    case 'lgRole': setLg({role:arg}); break;
+    case 'submitLogin': submitLogin(); break;
+    case 'sendOtp': sendOtp(); break;
+    case 'verifyOtp': verifyOtp(); break;
+    case 'lgBack': lgBack(); break;
+    case 'forgotPw': forgotPw(); break;
+    case 'lgNew': lgNew(); break;
+    case 'qWho': setQ({who:arg}); break;
+    case 'qArea': setQ({area:arg}); break;
+    case 'qNeed': setQ(q=>({needs: q.needs.includes(arg) ? q.needs.filter(n=>n!==arg) : [...q.needs, arg]})); break;
+    case 'qPlan': setQ({plan:arg}); break;
+    case 'qTos': setQ(q=>({tos: !q.tos})); break;
+    case 'quizNext': quizNext(); break;
+    case 'quizBack': quizBack(); break;
+    case 'appContinue': alert('Demo: this would continue into the Kalinga family app.'); break;
+  }
+});
+
+function bindInputs(){
+  const map = [
+    ['ap_name', v=>setAp({name:v})], ['ap_phone', v=>setAp({phone:v})], ['ap_city', v=>setAp({city:v})],
+    ['lg_id', v=>setLg({id:v})], ['lg_pw', v=>setLg({pw:v})], ['lg_code', v=>setLg({code:v.replace(/\D/g,'').slice(0,6)})],
+    ['q_name', v=>setQ({name:v})], ['q_email', v=>setQ({email:v})], ['q_phone', v=>setQ({phone:v})], ['q_country', v=>setQ({country:v})]
+  ];
+  map.forEach(([id, fn])=>{
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener('input', ()=>{ fn(el.value); refocus(id); });
+  });
+}
+let _lastFocus = null, _lastSel = null;
+function refocus(id){
+  _lastFocus = id;
+  const el = document.getElementById(id);
+  _lastSel = el ? el.selectionStart : null;
+}
+const _origRender = render;
+render = function(){
+  _origRender();
+  if (_lastFocus){
+    const el = document.getElementById(_lastFocus);
+    if (el){ el.focus(); if (_lastSel!=null && el.setSelectionRange) try{ el.setSelectionRange(_lastSel,_lastSel); }catch(e){} }
+  }
+};
+
+window.addEventListener('resize', ()=>{ setState({wide: window.innerWidth>=900}); });
+window.addEventListener('scroll', ()=>{
+  const sc = window.scrollY > 520;
+  if (sc !== state.scrolled) setState({scrolled: sc});
+}, {passive:true});
+
+render();
+</script>
+</body>
+</html>

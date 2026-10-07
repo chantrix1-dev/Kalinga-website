@@ -1,0 +1,9 @@
+{
+  "name": "kalinga-website",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "npx serve public",
+    "build": "echo 'static site, no build needed'"
+  }
+}

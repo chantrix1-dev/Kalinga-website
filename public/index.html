@@ -27,36 +27,47 @@
 <script>
 /* ---------- data ---------- */
 const WHO = [['nanay','Nanay'],['tatay','Tatay'],['lola','Lola'],['lolo','Lolo'],['both','Both parents']];
-const AREAS = [['iloilo','Iloilo'],['cebu','Cebu'],['mm','Metro Manila'],['other','Somewhere else']];
+const AREAS = [['mm','Metro Manila'],['bulacan','Bulacan'],['other','Somewhere else']];
 const NEEDS = [['meds','Medication check'],['vitals','Blood pressure & wellbeing'],['meals','Meals & hydration'],['errands','Groceries & errands'],['doctor','Doctor visit companion'],['company','Companionship']];
+const DURATIONS = [
+  {id:'short',label:'1–2 hour visit',sub:'A quick check-in',rate:450},
+  {id:'half',label:'Half-day visit',sub:'4 hours, AM or PM',rate:950},
+  {id:'full',label:'Whole-day visit',sub:'8 hours',rate:1700},
+  {id:'overnight',label:'Overnight visit',sub:'12 hours, incl. night differential',rate:2200}
+];
 const PLANS = {
-  basic:{name:'Basic',price:'₱1,499',freq:'Once a week'},
-  standard:{name:'Standard',price:'₱2,799',freq:'Twice a week'},
-  premium:{name:'Premium',price:'₱4,999',freq:'Every day'}
+  basic:{name:'Basic',freq:'Once a week',visits:4},
+  standard:{name:'Standard',freq:'Twice a week',visits:8},
+  premium:{name:'Premium',freq:'Every day',visits:30}
 };
 const TIERS = [
-  {id:'basic',code:'BASIC',tagline:'A weekly check-in',title:'Once a week',big:'1×',bigSub:'visit / week',desc:'One visit of about an hour each week. Good for a parent who is independent but lives alone.',perDay:'≈ ₱50/day',feats:['Checklist + photos every visit','Message your caregiver','Emergency alerts (push + SMS)']},
-  {id:'standard',code:'STANDARD',tagline:'Steady, regular care',title:'Twice a week',big:'2×',bigSub:'visits / week',desc:'Two visits a week with the same caregiver. Most families choose this one.',perDay:'≈ ₱93/day',feats:['Photos + video every visit','Backup caregiver if they cancel','Up to 4 family members linked']},
-  {id:'premium',code:'PREMIUM',tagline:'Someone there daily',title:'Every day',big:'7×',bigSub:'visits / week',desc:'A visit every day of the week. For parents who need a closer eye or are recovering from an illness.',perDay:'≈ ₱167/day',feats:['Daily visits, Mon–Sun','Priority backup caregiver','Video call during visits']}
+  {id:'basic',code:'BASIC',tagline:'A weekly check-in',title:'Once a week',big:'1×',bigSub:'visit / week',desc:'A visit each week with the same caregiver. Good for someone who is independent but lives alone.',feats:['Checklist + photos every visit','Message your caregiver','Emergency alerts (push + SMS)']},
+  {id:'standard',code:'STANDARD',tagline:'Steady, regular care',title:'Twice a week',big:'2×',bigSub:'visits / week',desc:'Two visits a week with the same caregiver. Most families choose this one.',feats:['Photos + video every visit','Backup caregiver if they cancel','Up to 4 family members linked']},
+  {id:'premium',code:'PREMIUM',tagline:'Someone there daily',title:'Every day',big:'7×',bigSub:'visits / week',desc:'A visit every day of the week. For a loved one who needs a closer eye or is recovering from an illness.',feats:['Daily visits, Mon–Sun','Priority backup caregiver','Video call during visits']}
 ];
+function peso(n){ return '₱'+Math.round(n).toLocaleString('en-PH'); }
+function priceFor(tierId, durId){
+  const t = PLANS[tierId] || PLANS.basic, d = DURATIONS.find(x=>x.id===durId) || DURATIONS[0];
+  return t.visits * d.rate;
+}
 const HARDWARE = [
-  {t:'Safety tag',b:'A GPS pendant with fall detection, an SOS button and safe-zone alerts.'},
-  {t:'Home camera',b:'Covers common areas only. Only the primary account holder can view it.'},
-  {t:'Caregiver body cam',b:'Worn only during visits. Footage is opened only if there is a formal dispute.'}
+  {id:'tag',t:'Safety tag',b:'A GPS pendant with fall detection, an SOS button and safe-zone alerts.',price:'₱1,990',sub:'one-time, or ₱199/mo over 12 months'},
+  {id:'camera',t:'Home camera',b:'Covers common areas only. Only the primary account holder can view it.',price:'₱2,490',sub:'one-time, or ₱249/mo over 12 months'},
+  {id:'bodycam',t:'Caregiver body cam',b:'Worn only during visits. Footage is opened only if there is a formal dispute.',price:'₱149/mo',sub:'billed with your plan'}
 ];
 const CAREGIVERS = [
-  {name:'Joy Santos',meta:'Jaro, Iloilo · 6 yrs'},
-  {name:'Ramon Villareal',meta:'Mandurriao, Iloilo · 4 yrs'},
-  {name:'Liza Fernandez, RN',meta:'La Paz, Iloilo · 9 yrs'},
-  {name:'Grace Tan',meta:'Lahug, Cebu · 5 yrs'},
-  {name:'Arnel Bautista',meta:'Mandaue, Cebu · 7 yrs'},
-  {name:'Marites Ocampo',meta:'Quezon City · 8 yrs'},
-  {name:'Jenny Aquino',meta:'Makati · 3 yrs'}
+  {name:'Joy Santos',meta:'Quezon City, Metro Manila · 6 yrs'},
+  {name:'Ramon Villareal',meta:'Makati, Metro Manila · 4 yrs'},
+  {name:'Grace Tan',meta:'Malolos, Bulacan · 5 yrs'},
+  {name:'Arnel Bautista',meta:'Meycauayan, Bulacan · 7 yrs'},
+  {name:'Marites Ocampo',meta:'Taguig, Metro Manila · 8 yrs'},
+  {name:'Jenny Aquino',meta:'San Jose del Monte, Bulacan · 3 yrs'}
 ];
+const NURSES_LIVE = false;
 const VISITS = [
-  {tin:'9:14',tout:'10:32',tags:['Meds taken','BP 128/82','Groceries'],note:'Nanay Remy ate all her lunch today and we walked to the sari-sari store. She asked if you will call on Saturday.',by:'Joy, visiting Nanay Remy · Jaro'},
-  {tin:'2:00',tout:'3:10',tags:['Meds taken','BP 135/86','Pharmacy'],note:'Tatay Ben picked up his refill from Mercury Drug with me. His knee was a little sore, so I let his daughter know.',by:'Arnel, visiting Tatay Ben · Mandaue'},
-  {tin:'8:30',tout:'9:25',tags:['Meds taken','Breakfast','Video call'],note:'Lola Cora watched the video call with her apo in Toronto and was so happy. She asked me to send the photo to the family.',by:'Marites, visiting Lola Cora · Quezon City'}
+  {tin:'9:14',tout:'10:32',tags:['Meds taken','BP 128/82','Groceries'],note:'Nanay Remy ate all her lunch today and we walked to the sari-sari store. She asked if you will call on Saturday.',by:'Joy, visiting Nanay Remy · Quezon City'},
+  {tin:'2:00',tout:'3:10',tags:['Meds taken','BP 135/86','Pharmacy'],note:'Tatay Ben picked up his refill from Mercury Drug with me. His knee was a little sore, so I let his daughter know.',by:'Arnel, visiting Tatay Ben · Meycauayan, Bulacan'},
+  {tin:'8:30',tout:'9:25',tags:['Meds taken','Breakfast','Video call'],note:'Lola Cora watched the video call with her apo abroad and was so happy. She asked me to send the photo to the family.',by:'Marites, visiting Lola Cora · Taguig'}
 ];
 const PROMISES = ['Backup caregiver','Next visit free','Cancel anytime','Locked visit records'];
 const FAQS = [
@@ -66,7 +77,7 @@ const FAQS = [
   ['Can my siblings see the visits?','Yes. Each linked family member has their own login and gets their own alerts. Only the primary account holder can manage billing.'],
   ['How do I pay from abroad?','You can pay by card (Visa or Mastercard) or with Wise in your own currency. If you prefer pesos, you can use GCash or Maya. You are billed monthly, and every charge is listed on your invoice.'],
   ['Is my family’s information private?','Yes. Medical notes and emergency contacts are encrypted. Only your parent’s assigned caregiver and the family members you link can see them. We follow the Data Privacy Act (RA 10173).'],
-  ['Where are you available?','We are starting in Metro Manila. If your parent lives somewhere else, start a care match anyway and we will let you know when we reach their area.'],
+  ['Where are you available?','We are starting in Metro Manila and Bulacan. If your parent lives somewhere else, start a care match anyway and we will let you know when we reach their area.'],
   ['Can I cancel or pause my plan?','Yes. You can do it anytime in the app, and the change applies from your next billing cycle.']
 ];
 const FOOT_COLS = [
@@ -81,7 +92,7 @@ const AP_DOCS = [{id:'id',t:'Valid government ID',req:true},{id:'nbi',t:'NBI cle
 /* ---------- state ---------- */
 const blankAp = () => ({open:false,step:0,role:null,name:'',phone:'',city:'',yrs:null,docs:[],err:'',ref:''});
 const blankLg = () => ({role:'family',id:'',pw:'',code:'',mode:'form',err:'',info:'',loading:false});
-const blankQ = () => ({step:0,who:null,area:null,needs:[],plan:null,name:'',email:'',phone:'',country:'',tos:false,err:'',sending:false});
+const blankQ = () => ({step:0,who:null,area:null,needs:[],plan:null,duration:null,addons:[],name:'',email:'',phone:'',country:'',tos:false,err:'',sending:false});
 
 let state = {
   wide: window.innerWidth >= 900,
@@ -89,7 +100,9 @@ let state = {
   quizOpen:false, q:blankQ(),
   loginOpen:false, lg:blankLg(),
   ap:blankAp(),
-  faqOpen:-1
+  faqOpen:-1,
+  addons:[],
+  pv:{open:false, tierId:null, duration:null, addons:[]}
 };
 let _t;
 
@@ -101,7 +114,20 @@ function setLg(p){ setState(s=>({lg:{...s.lg, err:'', ...(typeof p==='function'?
 function esc(str){ return String(str==null?'':str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
 /* ---------- actions ---------- */
-function openQuiz(plan){ setState({quizOpen:true, q:{...blankQ(), plan:plan||null}}); }
+function openQuiz(plan){ setState(s=>({quizOpen:true, q:{...blankQ(), plan:plan||null, addons:[...s.addons]}})); }
+function hwToggle(id){ setState(s=>({addons: s.addons.includes(id) ? s.addons.filter(x=>x!==id) : [...s.addons, id]})); }
+function openPV(tierId){ setState(s=>({pv:{open:true, tierId, duration:null, addons:[...s.addons]}})); }
+function closePV(){ setState(s=>({pv:{...s.pv, open:false}})); }
+function pvDuration(id){ setState(s=>({pv:{...s.pv, duration:id}})); }
+function pvAddon(id){ setState(s=>({pv:{...s.pv, addons: s.pv.addons.includes(id) ? s.pv.addons.filter(x=>x!==id) : [...s.pv.addons, id]}})); }
+function pvContinue(){
+  setState(s=>({
+    pv:{...s.pv, open:false},
+    addons:[...s.pv.addons],
+    quizOpen:true,
+    q:{...blankQ(), plan:s.pv.tierId, duration:s.pv.duration, addons:[...s.pv.addons]}
+  }));
+}
 function closeQuiz(){ setState({quizOpen:false}); }
 function openLogin(){ setState({loginOpen:true, lg:blankLg()}); }
 function closeLogin(){ setState({loginOpen:false}); }
@@ -114,6 +140,7 @@ function quizNext(){
   if (q.step===0 && (!q.who || !q.area)) return setQ({err:"Choose who we're visiting and where they live."});
   if (q.step===1 && !q.needs.length) return setQ({err:'Choose at least one.'});
   if (q.step===2 && !q.plan) return setQ({err:'Choose how often.'});
+  if (q.step===2 && !q.duration) return setQ({err:'Choose how long each visit should be.'});
   if (q.step===3){
     if (!q.name.trim() || !q.email.trim() || !q.phone.trim() || !q.country.trim()) return setQ({err:'Please fill in every field.'});
     if (!/^\S+@\S+\.\S+$/.test(q.email.trim())) return setQ({err:'Check your email address.'});
@@ -206,8 +233,8 @@ function render(){
   <section id="top" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,480px),1fr));background:#F6F1E7">
     <div style="padding:clamp(48px,7vw,96px) clamp(24px,6vw,96px);display:flex;flex-direction:column;justify-content:center;gap:24px;max-width:680px;width:100%">
       <span style="font-size:12px;font-weight:700;letter-spacing:.14em;color:#3E7C93">KALINGA · VETTED LOCAL CAREGIVERS</span>
-      <h1 style="font-size:clamp(38px,4.8vw,60px);font-weight:600;line-height:1.08;letter-spacing:-.03em;color:#0E3446">Far from <em style="font-style:italic;color:#3E7C93">home</em>.<br>Never far from <em style="font-style:italic;color:#3E7C93">Nanay</em>.</h1>
-      <p style="font-size:17px;line-height:1.65;color:#2F4A57;max-width:500px">Answer a 2-minute care match and we'll match your parent with an NBI-cleared caregiver who lives nearby. They visit on the schedule you choose. After every visit you'll see GPS check-in times, photos and notes, even if you're in Dubai, Toronto or Hong Kong. Backed by our <strong style="color:#0E3446">missed-visit guarantee</strong>.</p>
+      <h1 style="font-size:clamp(38px,4.8vw,60px);font-weight:600;line-height:1.08;letter-spacing:-.03em;color:#0E3446">Far from <em style="font-style:italic;color:#3E7C93">home</em>.<br>Never far from <em style="font-style:italic;color:#3E7C93">family</em>.</h1>
+      <p style="font-size:17px;line-height:1.65;color:#2F4A57;max-width:500px">Answer a 2-minute care match and we'll match your loved one with an NBI-cleared caregiver who lives nearby. They visit on the schedule you choose. After every visit you'll see GPS check-in times, photos and notes, no matter where in the world you are. Backed by our <strong style="color:#0E3446">missed-visit guarantee</strong>.</p>
       <div style="display:flex;flex-direction:column;gap:14px;align-items:flex-start">
         <button data-act="openQuiz" style="height:56px;padding:0 30px;border-radius:999px;border:none;background:#0E3446;color:#FFFFFF;font-size:16px;font-weight:700;box-shadow:0 8px 24px rgba(14,52,70,.25)">Start my care match →</button>
         <span style="font-size:14px;color:#2F4A57"><strong style="color:#0E3446">Founding-family pricing</strong> · No contract, cancel anytime</span>
@@ -217,7 +244,7 @@ function render(){
       </div>
     </div>
     <div style="position:relative;min-height:520px;background:#CFE3E8">
-      <div class="img-slot">Hero photo: a caregiver and an elderly Filipino parent laughing at home, warm daylight</div>
+      <div class="img-slot"></div>
       <div style="position:absolute;left:24px;bottom:24px;background:rgba(255,255,255,.95);border-radius:18px;padding:14px 16px;display:flex;gap:12px;align-items:center;box-shadow:0 12px 32px rgba(14,42,56,.18);max-width:320px;pointer-events:none">
         <div style="width:42px;height:42px;border-radius:50%;background:#0E3446;color:#FFFFFF;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;flex-shrink:0">JS</div>
         <div style="display:flex;flex-direction:column;gap:2px">
@@ -228,24 +255,22 @@ function render(){
     </div>
   </section>
 
-  <section id="caregivers" style="background:linear-gradient(180deg,#0E3446 0%,#1F5A70 55%,#3E7C93 100%);color:#FFFFFF;padding:72px 0 64px">
-    <div style="max-width:1200px;margin:0 auto;padding:0 24px;display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center">
+  <section id="caregivers" style="background:linear-gradient(180deg,#0E3446 0%,#1F5A70 55%,#3E7C93 100%);color:#FFFFFF;padding:72px 0 80px">
+    <div style="max-width:1200px;margin:0 auto;padding:0 24px;display:flex;flex-direction:column;align-items:center;gap:16px;text-align:center">
       <span style="font-size:12px;font-weight:700;letter-spacing:.14em;color:#BFDCE4">MEET THE CAREGIVERS</span>
-      <h2 style="font-size:clamp(30px,4vw,46px);font-weight:600;letter-spacing:-.03em;line-height:1.1">The people visiting <em style="font-style:italic;color:#F2B872">your parents</em>.</h2>
-      <p style="font-size:16px;line-height:1.6;color:#DCEBEF;max-width:520px">They live close to the families they visit. Each one is interviewed, cleared and trained by our team before their first booking.</p>
+      <h2 style="font-size:clamp(30px,4vw,46px);font-weight:600;letter-spacing:-.03em;line-height:1.1">The people visiting <em style="font-style:italic;color:#F2B872">your family</em>.</h2>
+      <p style="font-size:16px;line-height:1.6;color:#DCEBEF;max-width:520px">We're onboarding local, NBI-cleared caregivers across Metro Manila and Bulacan. Each one is interviewed, cleared and trained by our team before their first booking.</p>
     </div>
-    <div class="cg-strip" style="display:flex;gap:16px;overflow-x:auto;padding:36px 24px 8px;scroll-snap-type:x mandatory">
-      ${CAREGIVERS.map(c=>`
-      <div style="flex:0 0 220px;height:300px;border-radius:20px;overflow:hidden;position:relative;background:#2A6680;scroll-snap-align:start;box-shadow:0 10px 30px rgba(0,0,0,.2)">
-        <div class="img-slot">Caregiver photo</div>
-        <div style="position:absolute;left:0;right:0;bottom:0;padding:40px 14px 14px;background:linear-gradient(180deg,rgba(14,52,70,0) 0%,rgba(14,52,70,.85) 100%);display:flex;flex-direction:column;gap:2px;pointer-events:none;text-align:left">
-          <span style="font-size:15px;font-weight:700">${esc(c.name)}</span>
-          <span style="font-size:12px;color:#DCEBEF">${esc(c.meta)}</span>
-        </div>
+    <div class="cg-strip" style="display:flex;justify-content:center;gap:16px;overflow-x:auto;padding:36px 24px 8px;max-width:1200px;margin:0 auto">
+      ${Array.from({length:5}).map(()=>`
+      <div style="flex:0 0 220px;height:300px;border-radius:20px;overflow:hidden;position:relative;background:rgba(255,255,255,.06);border:1.5px dashed rgba(255,255,255,.3);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px">
+        <svg width="72" height="72" viewBox="0 0 72 72" fill="none" style="opacity:.55">
+          <circle cx="36" cy="36" r="36" fill="rgba(255,255,255,.1)"/>
+          <circle cx="36" cy="28" r="13" fill="rgba(255,255,255,.4)"/>
+          <path d="M10 66c3-15 14-23 26-23s23 8 26 23" fill="rgba(255,255,255,.4)"/>
+        </svg>
+        <span style="font-size:14px;font-weight:700;color:#DCEBEF">Coming soon</span>
       </div>`).join('')}
-    </div>
-    <div style="display:flex;justify-content:center;align-items:center;gap:10px;padding-top:24px;font-size:14px;color:#DCEBEF">
-      <span style="color:#F2B872;letter-spacing:2px">★★★★★</span><span>Every caregiver is rated by families after each visit</span>
     </div>
   </section>
 
@@ -346,30 +371,37 @@ function render(){
               <p style="font-size:14px;line-height:1.55;color:#2F4A57">${t.desc}</p>
             </div>
             <div style="display:flex;flex-direction:column;gap:2px">
-              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="font-size:26px;font-weight:700;color:#0E3446">${PLANS[t.id].price}</span><span style="font-size:14px;color:#5C7480">/mo</span>
+              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="font-size:13px;color:#5C7480">From</span><span style="font-size:26px;font-weight:700;color:#0E3446">${peso(priceFor(t.id,'short'))}</span><span style="font-size:14px;color:#5C7480">/mo</span>
                 ${f?`<span style="background:#F2B872;color:#0E2A38;font-size:11px;font-weight:700;padding:4px 10px;border-radius:999px">MOST CHOSEN</span>`:''}
               </div>
-              <span style="font-size:13px;color:#5C7480">${t.perDay}</span>
+              <span style="font-size:13px;color:#5C7480">for a 1–2 hour visit, ${PLANS[t.id].visits} visits/mo</span>
             </div>
             <div style="display:flex;flex-direction:column;gap:8px">
               ${t.feats.map(ft=>`<span style="font-size:13px;color:#0E3446;border:1px solid #DCE5E8;border-radius:999px;padding:8px 14px;display:flex;gap:8px"><span style="color:#3E7C93;font-weight:700">✓</span>${esc(ft)}</span>`).join('')}
             </div>
-            <button data-act="openQuiz" data-arg="${t.id}" style="margin-top:auto;height:50px;border-radius:999px;border:${f?'none':'1.5px solid #0E3446'};background:${f?'#0E3446':'#FFFFFF'};color:${f?'#FFFFFF':'#0E3446'};font-size:15px;font-weight:700">Start ${PLANS[t.id].name} →</button>
+            <button data-act="openPV" data-arg="${t.id}" style="margin-top:auto;height:50px;border-radius:999px;border:${f?'none':'1.5px solid #0E3446'};background:${f?'#0E3446':'#FFFFFF'};color:${f?'#FFFFFF':'#0E3446'};font-size:15px;font-weight:700">Start ${PLANS[t.id].name} →</button>
           </div>
         </div>`;
       }).join('')}
     </div>
-    <div style="width:100%;max-width:1040px;background:#FFFFFF;border-radius:22px;padding:22px 24px;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:16px 28px;align-items:center;box-shadow:0 2px 12px rgba(14,42,56,.06)">
+    <div style="width:100%;max-width:1040px;background:#FFFFFF;border-radius:22px;padding:22px 24px;display:flex;flex-direction:column;gap:16px;box-shadow:0 2px 12px rgba(14,42,56,.06)">
       <div style="display:flex;flex-direction:column;gap:4px">
         <span style="font-size:12px;font-weight:700;letter-spacing:.14em;color:#3E7C93">OPTIONAL ADD-ONS</span>
         <span style="font-size:17px;font-weight:700;color:#0E3446">Safety devices for <em style="color:#3E7C93">any plan</em></span>
-        <span style="font-size:13px;color:#5C7480">Pay in full, or in installments over 3, 6 or 12 months</span>
+        <span style="font-size:13px;color:#5C7480">Select the devices you'd like, then add them when you start your care match.</span>
       </div>
-      ${HARDWARE.map(h=>`
-      <div style="display:flex;flex-direction:column;gap:3px;border-left:2px solid #E3EFF2;padding-left:14px">
-        <span style="font-size:15px;font-weight:700;color:#0E3446">${esc(h.t)}</span>
-        <span style="font-size:13px;line-height:1.5;color:#2F4A57">${esc(h.b)}</span>
-      </div>`).join('')}
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:12px">
+        ${HARDWARE.map(h=>`
+        <button data-act="hwToggle" data-arg="${h.id}" style="text-align:left;border-radius:16px;border:1.5px solid ${s.addons.includes(h.id)?'#0E3446':'#E3EFF2'};background:${s.addons.includes(h.id)?'#F6F1E7':'#FFFFFF'};padding:14px;display:flex;flex-direction:column;gap:6px;color:#0E2A38">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+            <span style="font-size:15px;font-weight:700;color:#0E3446">${esc(h.t)}</span>
+            <span style="width:22px;height:22px;border-radius:50%;border:1.5px solid #0E3446;background:${s.addons.includes(h.id)?'#0E3446':'#FFFFFF'};color:#FFFFFF;font-size:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0">${s.addons.includes(h.id)?'✓':''}</span>
+          </div>
+          <span style="font-size:13px;line-height:1.5;color:#2F4A57">${esc(h.b)}</span>
+          <span style="font-size:14px;font-weight:700;color:#0E3446">${esc(h.price)} <span style="font-size:12px;font-weight:500;color:#5C7480">${esc(h.sub)}</span></span>
+        </button>`).join('')}
+      </div>
+      ${s.addons.length?`<button data-act="openQuiz" style="align-self:flex-start;height:44px;padding:0 20px;border-radius:999px;border:none;background:#0E3446;color:#FFFFFF;font-size:14px;font-weight:700">Add selected to a care match →</button>`:''}
     </div>
   </section>
 
@@ -386,7 +418,7 @@ function render(){
         </div>
       </div>
       <div style="position:relative;aspect-ratio:4/5;max-height:540px;border-radius:24px;overflow:hidden;background:#1F5A70;box-shadow:0 24px 60px rgba(0,0,0,.35)">
-        <div class="img-slot">Founder portrait</div>
+        <div class="img-slot"></div>
       </div>
     </div>
   </section>
@@ -428,7 +460,7 @@ function render(){
       <span style="font-size:14px;color:#2F4A57">Still have questions? <a href="mailto:hello@kalinga.ph" style="font-weight:700;text-decoration:underline">Message us</a> or <button data-act="openQuiz" style="background:none;border:none;padding:0;font-size:14px;font-weight:700;color:#0E3446;text-decoration:underline">start a care match</button>.</span>
     </div>
     <div style="position:relative;min-height:440px;background:#E7DFD0">
-      <div class="img-slot">Lifestyle photo: an elderly parent's home, tea, medicine organizer, family photos</div>
+      <div class="img-slot"></div>
     </div>
   </section>
 
@@ -481,6 +513,7 @@ function render(){
   </footer>
 
   ${s.loginOpen ? renderLoginModal(lg) : ''}
+  ${s.pv.open ? renderPVModal(s.pv) : ''}
   ${s.quizOpen ? renderQuizModal(q, plan) : ''}
 
   </div>`;
@@ -505,8 +538,8 @@ function renderApplyModal(a){
       <div style="display:flex;flex-direction:column;gap:14px">
         <h3 style="margin:0;font-size:26px;font-weight:600;letter-spacing:-.02em;color:#0E3446">Tell us about <em style="font-style:italic;color:#3E7C93">you</em>.</h3>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
-          ${[['caregiver','Caregiver','TESDA NC II or experience'],['nurse','Nurse','PRC-licensed RN']].map(([id,label,sub])=>`
-          <button data-act="apRole" data-arg="${id}" style="min-height:64px;border-radius:16px;border:${a.role===id?'2px solid #0E3446':'1.5px solid #DED6C7'};background:#FFFFFF;color:#0E3446;font-size:15px;font-weight:700;padding:10px;display:flex;flex-direction:column;gap:2px;align-items:center;justify-content:center">${label}<span style="font-size:12px;font-weight:500;color:#2F4A57">${sub}</span></button>`).join('')}
+          <button data-act="apRole" data-arg="caregiver" style="min-height:64px;border-radius:16px;border:${a.role==='caregiver'?'2px solid #0E3446':'1.5px solid #DED6C7'};background:#FFFFFF;color:#0E3446;font-size:15px;font-weight:700;padding:10px;display:flex;flex-direction:column;gap:2px;align-items:center;justify-content:center">Caregiver<span style="font-size:12px;font-weight:500;color:#2F4A57">TESDA NC II or experience</span></button>
+          <button disabled style="min-height:64px;border-radius:16px;border:1.5px dashed #DED6C7;background:#F6F1E7;color:#9AA8AE;font-size:15px;font-weight:700;padding:10px;display:flex;flex-direction:column;gap:2px;align-items:center;justify-content:center;cursor:not-allowed">Nurse<span style="font-size:12px;font-weight:600;color:#9AA8AE">Coming soon</span></button>
         </div>
         <label style="display:flex;flex-direction:column;gap:6px"><span style="font-size:13px;font-weight:700;color:#0E3446">Full name</span><input id="ap_name" value="${esc(a.name)}" placeholder="Joy Santos" style="height:50px;border-radius:14px;border:1.5px solid #DED6C7;background:#FFFFFF;padding:0 16px;font-size:16px;outline:none;color:#0E2A38;font-family:inherit"></label>
         <label style="display:flex;flex-direction:column;gap:6px"><span style="font-size:13px;font-weight:700;color:#0E3446">Mobile number</span><input id="ap_phone" value="${esc(a.phone)}" placeholder="09XX XXX XXXX" inputmode="tel" style="height:50px;border-radius:14px;border:1.5px solid #DED6C7;background:#FFFFFF;padding:0 16px;font-size:16px;outline:none;color:#0E2A38;font-family:inherit"></label>
@@ -596,6 +629,54 @@ function renderLoginModal(lg){
   </div>`;
 }
 
+function renderPVModal(pv){
+  const tier = TIERS.find(t=>t.id===pv.tierId) || TIERS[0];
+  const planInfo = PLANS[pv.tierId] || PLANS.basic;
+  const dur = DURATIONS.find(d=>d.id===pv.duration);
+  const addonItems = HARDWARE.filter(h=>pv.addons.includes(h.id));
+  return `
+  <div style="position:fixed;inset:0;z-index:65;background:rgba(11,37,51,.6);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:16px">
+    <div style="background:#F6F1E7;border-radius:26px;max-width:480px;width:100%;max-height:92vh;overflow:auto;padding:24px;display:flex;flex-direction:column;gap:18px;box-shadow:0 30px 80px rgba(0,0,0,.35)">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:14px;font-weight:700;color:#3E7C93">${esc(tier.code)} PLAN</span>
+        <button data-act="closePV" style="width:40px;height:40px;border-radius:50%;border:none;background:#FFFFFF;font-size:18px;color:#0E3446">×</button>
+      </div>
+      <h3 style="font-size:26px;font-weight:600;letter-spacing:-.02em;line-height:1.15;color:#0E3446">How long should each <em style="font-style:italic;color:#3E7C93">visit</em> be?</h3>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        ${DURATIONS.map(d=>`
+        <button data-act="pvDuration" data-arg="${d.id}" style="min-height:60px;border-radius:18px;border:1.5px solid ${pv.duration===d.id?'#0E3446':'#DED6C7'};background:${pv.duration===d.id?'#0E3446':'#FFFFFF'};display:flex;justify-content:space-between;align-items:center;gap:12px;text-align:left;color:${pv.duration===d.id?'#FFFFFF':'#0E3446'};padding:0 18px">
+          <span style="display:flex;flex-direction:column;gap:2px"><span style="font-size:16px;font-weight:700">${esc(d.label)}</span><span style="font-size:13px;opacity:.85">${esc(d.sub)}</span></span>
+          <span style="font-size:14px;font-weight:700">${peso(planInfo.visits*d.rate)}/mo</span>
+        </button>`).join('')}
+      </div>
+      ${dur?`
+      <div style="display:flex;flex-direction:column;gap:4px">
+        <span style="font-size:15px;font-weight:700;color:#0E3446">Add safety devices? <span style="font-weight:500;color:#5C7480">(optional)</span></span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        ${HARDWARE.map(h=>{ const on = pv.addons.includes(h.id); return `
+        <button data-act="pvAddon" data-arg="${h.id}" style="min-height:56px;border-radius:16px;border:1.5px solid ${on?'#0E3446':'#DED6C7'};background:#FFFFFF;display:flex;justify-content:space-between;align-items:center;gap:12px;text-align:left;color:#0E2A38;padding:10px 16px">
+          <span style="display:flex;flex-direction:column;gap:1px"><span style="font-size:14px;font-weight:700;color:#0E3446">${esc(h.t)}</span><span style="font-size:12px;color:#5C7480">${esc(h.price)} ${esc(h.sub)}</span></span>
+          <span style="width:22px;height:22px;border-radius:50%;border:1.5px solid #0E3446;background:${on?'#0E3446':'#FFFFFF'};color:#FFFFFF;font-size:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0">${on?'✓':''}</span>
+        </button>`; }).join('')}
+      </div>
+      <div style="background:#FFFFFF;border-radius:18px;overflow:hidden;box-shadow:0 2px 12px rgba(14,42,56,.06)">
+        <div style="background:linear-gradient(160deg,#1F5A70,#0E3446);color:#FFFFFF;padding:12px 16px;font-size:12px;font-weight:700;letter-spacing:.1em">YOUR PLAN</div>
+        <div style="padding:14px 16px;display:flex;flex-direction:column;gap:10px">
+          <div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:15px;font-weight:700;color:#0E3446">${esc(tier.title)} · ${esc(dur.label)}</span><span style="font-size:20px;font-weight:700;color:#0E3446">${peso(priceFor(pv.tierId,pv.duration))}<span style="font-size:12px;font-weight:500;color:#5C7480">/mo</span></span></div>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            ${tier.feats.map(ft=>`<span style="font-size:12px;color:#2F4A57">✓ ${esc(ft)}</span>`).join('')}
+          </div>
+          ${addonItems.length?`<div style="border-top:1px solid #E7DFD0;padding-top:8px;display:flex;flex-direction:column;gap:4px">
+            ${addonItems.map(h=>`<div style="display:flex;justify-content:space-between;font-size:12px;color:#0E3446"><span>${esc(h.t)}</span><span style="font-weight:700">${esc(h.price)}</span></div>`).join('')}
+          </div>`:''}
+        </div>
+      </div>
+      <button data-act="pvContinue" style="height:52px;border-radius:999px;border:none;background:#0E3446;color:#FFFFFF;font-size:15px;font-weight:700">Continue to care match →</button>`:''}
+    </div>
+  </div>`;
+}
+
 function renderQuizModal(q, plan){
   const stepLabel = q.step<4 ? 'STEP '+(q.step+1)+' OF 4' : 'DONE';
   const progress = (q.step>=4?100:(q.step+1)/4*100)+'%';
@@ -640,11 +721,19 @@ function renderQuizModal(q, plan){
         <h3 style="font-size:28px;font-weight:600;letter-spacing:-.02em;line-height:1.15;color:#0E3446">How <em style="font-style:italic;color:#3E7C93">often</em> should someone visit?</h3>
         <div style="display:flex;flex-direction:column;gap:8px">
           ${Object.entries(PLANS).map(([id,p])=>`
-          <button data-act="qPlan" data-arg="${id}" style="min-height:72px;border-radius:18px;border:1.5px solid ${q.plan===id?'#0E3446':'#DED6C7'};background:${q.plan===id?'#0E3446':'#FFFFFF'};display:flex;justify-content:space-between;align-items:center;gap:12px;text-align:left;color:${q.plan===id?'#FFFFFF':'#0E3446'};padding:0 18px">
+          <button data-act="qPlan" data-arg="${id}" style="min-height:60px;border-radius:18px;border:1.5px solid ${q.plan===id?'#0E3446':'#DED6C7'};background:${q.plan===id?'#0E3446':'#FFFFFF'};display:flex;justify-content:space-between;align-items:center;gap:12px;text-align:left;color:${q.plan===id?'#FFFFFF':'#0E3446'};padding:0 18px">
             <span style="display:flex;flex-direction:column;gap:2px"><span style="font-size:16px;font-weight:700">${p.name}</span><span style="font-size:13px;opacity:.85">${p.freq}</span></span>
-            <span style="font-size:18px;font-weight:700">${p.price}</span>
           </button>`).join('')}
-        </div>`:''}
+        </div>
+        <span style="font-size:15px;font-weight:700;color:#0E3446;padding-top:6px">How long should each visit be?</span>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          ${DURATIONS.map(d=>`
+          <button data-act="qDuration" data-arg="${d.id}" style="min-height:60px;border-radius:18px;border:1.5px solid ${q.duration===d.id?'#0E3446':'#DED6C7'};background:${q.duration===d.id?'#0E3446':'#FFFFFF'};display:flex;justify-content:space-between;align-items:center;gap:12px;text-align:left;color:${q.duration===d.id?'#FFFFFF':'#0E3446'};padding:0 18px">
+            <span style="display:flex;flex-direction:column;gap:2px"><span style="font-size:16px;font-weight:700">${esc(d.label)}</span><span style="font-size:13px;opacity:.85">${esc(d.sub)}</span></span>
+            <span style="font-size:14px;font-weight:700">${peso(d.rate)}/visit</span>
+          </button>`).join('')}
+        </div>
+        ${(q.plan && q.duration)?`<div style="background:#FFFFFF;border-radius:14px;padding:14px 16px;display:flex;justify-content:space-between;align-items:center"><span style="font-size:14px;font-weight:600;color:#0E3446">Estimated plan cost</span><span style="font-size:20px;font-weight:700;color:#0E3446">${peso(priceFor(q.plan,q.duration))}/mo</span></div>`:''}`:''}
         ${(q.step===3 && !q.sending)?`
         <h3 style="font-size:28px;font-weight:600;letter-spacing:-.02em;line-height:1.15;color:#0E3446">Where should we send your <em style="font-style:italic;color:#3E7C93">matches</em>?</h3>
         <label style="display:flex;flex-direction:column;gap:6px"><span style="font-size:13px;font-weight:700;color:#0E3446">Your full name</span><input id="q_name" value="${esc(q.name)}" placeholder="Maria Dela Cruz" style="height:50px;border-radius:14px;border:1.5px solid #DED6C7;background:#FFFFFF;padding:0 16px;font-size:16px;outline:none;color:#0E2A38;font-family:inherit"></label>
@@ -655,18 +744,32 @@ function renderQuizModal(q, plan){
           <span style="width:22px;height:22px;border-radius:6px;border:1.5px solid #0E3446;background:${q.tos?'#0E3446':'#FFFFFF'};color:#FFFFFF;font-size:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0">${q.tos?'✓':''}</span>
           <span style="font-size:14px;line-height:1.5">I agree to the Terms of Service and Privacy Policy, including emergency protocol consent.</span>
         </button>`:''}
-        ${q.step===4?`
+        ${q.step===4?(()=>{
+          const dur = DURATIONS.find(d=>d.id===q.duration) || DURATIONS[0];
+          const planTotal = priceFor(q.plan, q.duration);
+          const addonItems = HARDWARE.filter(h=>q.addons.includes(h.id));
+          return `
         <h3 style="font-size:32px;font-weight:600;letter-spacing:-.02em;line-height:1.15;color:#0E3446">Salamat, <em style="font-style:italic;color:#3E7C93">${esc(firstName)}</em>.</h3>
         <p style="font-size:16px;line-height:1.6;color:#2F4A57">We're matching caregivers for ${esc(whoLabel)} in ${esc(areaLabel)}. Within 24 hours we'll email up to 3 profiles to ${esc(q.email)}, and you choose who visits.</p>
         <div style="background:#FFFFFF;border-radius:20px;overflow:hidden;box-shadow:0 8px 24px rgba(14,42,56,.1)">
           <div style="background:linear-gradient(160deg,#1F5A70,#0E3446);color:#FFFFFF;padding:14px 18px;font-size:12px;font-weight:700;letter-spacing:.12em">SUGGESTED PLAN</div>
-          <div style="padding:16px 18px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
-            <span style="display:flex;flex-direction:column;gap:2px"><span style="font-size:18px;font-weight:700;color:#0E3446">${plan.name}</span><span style="font-size:13px;color:#5C7480">${plan.freq}</span></span>
-            <span style="font-size:24px;font-weight:700;color:#0E3446">${plan.price}<span style="font-size:13px;font-weight:500;color:#5C7480">/mo</span></span>
+          <div style="padding:16px 18px;display:flex;flex-direction:column;gap:10px">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+              <span style="display:flex;flex-direction:column;gap:2px"><span style="font-size:18px;font-weight:700;color:#0E3446">${plan.name} · ${esc(dur.label)}</span><span style="font-size:13px;color:#5C7480">${plan.freq}</span></span>
+              <span style="font-size:24px;font-weight:700;color:#0E3446">${peso(planTotal)}<span style="font-size:13px;font-weight:500;color:#5C7480">/mo</span></span>
+            </div>
+            ${addonItems.length?`<div style="border-top:1px solid #E7DFD0;padding-top:10px;display:flex;flex-direction:column;gap:6px">
+              ${addonItems.map(h=>`<div style="display:flex;justify-content:space-between;font-size:13px;color:#0E3446"><span>${esc(h.t)}</span><span style="font-weight:700">${esc(h.price)}</span></div>`).join('')}
+            </div>`:''}
           </div>
         </div>
         <span style="font-size:14px;line-height:1.55;color:#5C7480">Covers ${esc(needsSummary)}.</span>
-        <a href="#" data-act="appContinue" style="height:54px;border-radius:999px;background:#0E3446;color:#FFFFFF;font-size:16px;font-weight:700;display:flex;align-items:center;justify-content:center">Continue to the app →</a>`:''}
+        <div style="background:#E3EFF2;border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:4px">
+          <span style="font-size:14px;font-weight:700;color:#0E3446">What happens next</span>
+          <span style="font-size:13px;line-height:1.6;color:#2F4A57">The Kalinga app isn't live yet. We'll reach you by email and SMS at ${esc(q.phone || 'the number you gave')} with your caregiver matches and payment link — no app needed to get started.</span>
+        </div>
+        <button data-act="closeQuiz" style="height:54px;border-radius:999px;background:#0E3446;color:#FFFFFF;font-size:16px;font-weight:700">Done</button>`;
+        })():''}
         ${q.sending?`<p style="font-size:24px;font-weight:600;line-height:1.3;padding:32px 0;color:#0E3446">Finding caregivers near <em style="font-style:italic;color:#3E7C93">${esc(areaLabel)}</em>…</p>`:''}
         ${q.err?`<span style="color:#B3261E;font-size:14px;font-weight:700">${esc(q.err)}</span>`:''}
       </div>
@@ -688,6 +791,12 @@ document.addEventListener('click', function(e){
   const arg = el.getAttribute('data-arg');
   switch(act){
     case 'openQuiz': openQuiz(arg); break;
+    case 'hwToggle': hwToggle(arg); break;
+    case 'openPV': openPV(arg); break;
+    case 'closePV': closePV(); break;
+    case 'pvDuration': pvDuration(arg); break;
+    case 'pvAddon': pvAddon(arg); break;
+    case 'pvContinue': pvContinue(); break;
     case 'closeQuiz': closeQuiz(); break;
     case 'openLogin': openLogin(); break;
     case 'closeLogin': closeLogin(); break;
@@ -712,10 +821,10 @@ document.addEventListener('click', function(e){
     case 'qArea': setQ({area:arg}); break;
     case 'qNeed': setQ(q=>({needs: q.needs.includes(arg) ? q.needs.filter(n=>n!==arg) : [...q.needs, arg]})); break;
     case 'qPlan': setQ({plan:arg}); break;
+    case 'qDuration': setQ({duration:arg}); break;
     case 'qTos': setQ(q=>({tos: !q.tos})); break;
     case 'quizNext': quizNext(); break;
     case 'quizBack': quizBack(); break;
-    case 'appContinue': alert('Demo: this would continue into the Kalinga family app.'); break;
   }
 });
 

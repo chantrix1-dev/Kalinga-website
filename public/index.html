@@ -19,6 +19,8 @@
   .cg-strip{scrollbar-width:none}
   .cg-strip::-webkit-scrollbar{display:none}
   input:focus{border-color:#0E3446!important}
+  @keyframes gpsping{0%{transform:scale(1);opacity:.55}100%{transform:scale(2.8);opacity:0}}
+  .gps-ring{animation:gpsping 2.4s ease-out infinite}
 </style>
 </head>
 <body>
@@ -288,8 +290,56 @@ function render(){
         ${['NBI-cleared caregivers','PRC-licensed, board-passer nurses','GPS-verified visits','Backup if they cancel'].map(d=>`<span style="display:flex;align-items:center;gap:8px"><span style="width:6px;height:6px;border-radius:50%;background:#3E7C93"></span>${esc(d)}</span>`).join('')}
       </div>
     </div>
-    <div style="position:relative;min-height:520px;background:#CFE3E8">
-      <div class="img-slot"></div>
+    <div style="position:relative;min-height:520px;background:#F1E8D8;overflow:hidden">
+      <svg viewBox="0 0 640 520" preserveAspectRatio="xMidYMid slice" style="position:absolute;inset:0;width:100%;height:100%" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="paperGrad" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#F6F0E2"/>
+            <stop offset="1" stop-color="#ECE0C8"/>
+          </linearGradient>
+        </defs>
+        <rect width="640" height="520" fill="url(#paperGrad)"/>
+        <g stroke="#0E3446" stroke-opacity=".1" stroke-width="1">
+          ${Array.from({length:12}).map((_,i)=>`<line x1="${i*58-10}" y1="0" x2="${i*58-70}" y2="520"/>`).join('')}
+          ${Array.from({length:10}).map((_,i)=>`<line x1="0" y1="${i*58-10}" x2="640" y2="${i*58+40}"/>`).join('')}
+        </g>
+        <g stroke="#0E3446" stroke-opacity=".32" stroke-width="2.5" fill="none" stroke-linecap="round">
+          <path d="M-10 410C120 440 260 420 340 380 420 340 520 340 650 300"/>
+          <path d="M60 -10C90 110 80 240 150 330 210 408 300 430 330 530"/>
+          <path d="M-10 230C150 210 230 180 340 150 450 120 540 90 650 60"/>
+          <path d="M470 -10C440 120 460 240 400 340 360 406 300 440 280 530"/>
+        </g>
+        <path d="M300 -10C330 70 290 150 330 230 375 318 320 420 360 530" fill="none" stroke="#5C9AAE" stroke-width="10" stroke-linecap="round" opacity=".55"/>
+        <path d="M300 -10C330 70 290 150 330 230 375 318 320 420 360 530" fill="none" stroke="#3E7C93" stroke-width="10" stroke-linecap="round" stroke-dasharray=".1 26" opacity=".9"/>
+        ${[[96,300,46,30],[360,70,56,36],[470,330,44,30],[150,430,50,28]].map(([x,y,w,h])=>`<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="10" fill="#9DBF9A" opacity=".4"/>`).join('')}
+        <line x1="20" y1="265" x2="620" y2="265" stroke="#0E3446" stroke-width="2" stroke-dasharray="2 10" opacity=".35"/>
+        ${(()=>{
+          const pins = [
+            ['Quezon City',200,330],['Manila',120,380],['Makati',172,440],['Pasig',248,398],['Taguig',204,468],
+            ['Malolos',410,176],['Meycauayan',336,230],['Marilao',392,206],['San Jose del Monte',468,140],['Baliwag',486,82]
+          ];
+          const route = pins.map(p=>`${p[1]},${p[2]}`).join(' ');
+          return `
+        <polyline points="${route}" fill="none" stroke="#F2B872" stroke-width="2.5" stroke-dasharray="1 8" stroke-linecap="round" opacity=".85"/>
+        <g font-family="'Plus Jakarta Sans',system-ui,sans-serif">
+          ${pins.map(([label,x,y],i)=>`
+          <g>
+            <circle class="gps-ring" cx="${x}" cy="${y}" r="7" fill="none" stroke="#0E3446" stroke-width="2" style="transform-origin:${x}px ${y}px;animation-delay:${(i%6)*0.4}s"/>
+            <path d="M${x} ${y+15}c-7-8-11-14-11-19a11 11 0 1 1 22 0c0 5-4 11-11 19z" fill="#0E3446"/>
+            <circle cx="${x}" cy="${y-4}" r="4.2" fill="#F2B872"/>
+            <text x="${x}" y="${y-22}" text-anchor="middle" font-size="11" font-weight="700" fill="#0E3446" style="paint-order:stroke;stroke:#F6F0E2;stroke-width:3px">${label}</text>
+          </g>`).join('')}
+        </g>`;
+        })()}
+        <g font-family="'Plus Jakarta Sans',system-ui,sans-serif" font-weight="700" letter-spacing=".12em" font-size="13">
+          <text x="430" y="40" fill="#0E3446">BULACAN</text>
+          <text x="150" y="495" fill="#0E3446">METRO MANILA</text>
+        </g>
+      </svg>
+      <div style="position:absolute;right:20px;top:20px;background:rgba(255,255,255,.95);border-radius:14px;padding:10px 14px;display:flex;align-items:center;gap:8px;box-shadow:0 10px 26px rgba(14,42,56,.16);pointer-events:none">
+        <span style="width:8px;height:8px;border-radius:50%;background:#0E3446"></span>
+        <span style="font-size:12px;font-weight:700;color:#0E3446">GPS-tagged visits, live</span>
+      </div>
       <div style="position:absolute;left:24px;bottom:24px;background:rgba(255,255,255,.95);border-radius:18px;padding:14px 16px;display:flex;gap:12px;align-items:center;box-shadow:0 12px 32px rgba(14,42,56,.18);max-width:320px;pointer-events:none">
         <div style="width:42px;height:42px;border-radius:50%;background:#0E3446;color:#FFFFFF;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;flex-shrink:0">JS</div>
         <div style="display:flex;flex-direction:column;gap:2px">

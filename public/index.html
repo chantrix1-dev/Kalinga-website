@@ -51,10 +51,28 @@ function priceFor(tierId, durId){
   return t.visits * d.rate;
 }
 const HARDWARE = [
-  {id:'tag',t:'Safety tag',b:'A GPS pendant with fall detection, an SOS button and safe-zone alerts.',price:'₱1,990',sub:'one-time, or ₱199/mo over 12 months'},
-  {id:'camera',t:'Home camera',b:'Covers common areas only. Only the primary account holder can view it.',price:'₱2,490',sub:'one-time, or ₱249/mo over 12 months'},
-  {id:'bodycam',t:'Caregiver body cam',b:'Worn only during visits. Footage is opened only if there is a formal dispute.',price:'₱149/mo',sub:'billed with your plan'}
+  {id:'tag',t:'Safety tag',b:'A GPS pendant with fall detection, an SOS button and safe-zone alerts.'},
+  {id:'camera',t:'Home camera',b:'Covers common areas only. Only the primary account holder can view it.'},
+  {id:'bodycam',t:'Caregiver body cam',b:'Worn only during visits. Footage is opened only if there is a formal dispute.'}
 ];
+const HARDWARE_PRODUCTS = {
+  tag: [
+    {id:'tag-basic',t:'Basic GPS Tag',b:'Fall detection, SOS button, safe-zone alerts.',price:'₱1,990',sub:'one-time, or ₱199/mo over 12 months'},
+    {id:'tag-plus',t:'GPS Tag Plus',b:'Adds heart-rate monitoring and a 2-week battery life.',price:'₱2,990',sub:'one-time, or ₱299/mo over 12 months'}
+  ],
+  camera: [
+    {id:'cam-standard',t:'Standard Home Camera',b:'1080p with night vision, covers one common area.',price:'₱2,490',sub:'one-time, or ₱249/mo over 12 months'},
+    {id:'cam-pro',t:'Pro Home Camera',b:'2K resolution, two-way audio, wider field of view.',price:'₱3,490',sub:'one-time, or ₱349/mo over 12 months'}
+  ],
+  bodycam: [
+    {id:'bc-standard',t:'Standard Body Cam',b:'Worn during visits only. Footage reviewed only in a formal dispute.',price:'₱149/mo',sub:'billed with your plan'},
+    {id:'bc-live',t:'Body Cam + Live Audio',b:'Adds an on-request live audio check-in during the visit.',price:'₱249/mo',sub:'billed with your plan'}
+  ]
+};
+const ALL_PRODUCTS = Object.values(HARDWARE_PRODUCTS).flat();
+function categoryOfProduct(productId){ return Object.keys(HARDWARE_PRODUCTS).find(cat=>HARDWARE_PRODUCTS[cat].some(p=>p.id===productId)); }
+function selectedProductFor(catId, addons){ return HARDWARE_PRODUCTS[catId].find(p=>addons.includes(p.id)); }
+function cheapestLabel(catId){ const prices = HARDWARE_PRODUCTS[catId].map(p=>parseInt(p.price.replace(/[^\d]/g,''),10)); return 'From ₱'+Math.min(...prices).toLocaleString('en-PH')+(HARDWARE_PRODUCTS[catId][0].sub.includes('/mo')&&!HARDWARE_PRODUCTS[catId][0].sub.includes('one-time')?'/mo':''); }
 const CAREGIVERS = [
   {name:'Joy Santos',meta:'Quezon City, Metro Manila · 6 yrs'},
   {name:'Ramon Villareal',meta:'Makati, Metro Manila · 4 yrs'},
@@ -71,7 +89,7 @@ const VISITS = [
 ];
 const PROMISES = ['Backup caregiver','Next visit free','Cancel anytime','Locked visit records'];
 const FAQS = [
-  ['Who are the caregivers?','They are local caregivers, many with TESDA caregiving or nursing backgrounds, who live near your parent. Before they can take a booking, each one passes an NBI clearance, ID and reference checks, first-aid/CPR verification and an in-person interview.'],
+  ['Who are the caregivers?','They are local, TESDA-trained caregivers and PRC-licensed, board-passer nurses who live near your loved one. Before they can take a booking, each one passes an NBI clearance, ID and reference checks, first-aid/CPR verification and an in-person interview.'],
   ['Is Kalinga a medical service?','No. Our caregivers do scheduled, non-medical check-in visits. If something looks wrong, they follow our emergency protocol. That means calling 911 when it is needed, alerting your family, and notifying our team.'],
   ['What if the caregiver can’t come?','We send a vetted backup caregiver and tell you right away. If no backup is available, your next visit is free.'],
   ['Can my siblings see the visits?','Yes. Each linked family member has their own login and gets their own alerts. Only the primary account holder can manage billing.'],
@@ -102,7 +120,11 @@ let state = {
   ap:blankAp(),
   faqOpen:-1,
   addons:[],
-  pv:{open:false, tierId:null, duration:null, addons:[]}
+  pv:{open:false, tierId:null, duration:null, addons:[]},
+  hwPicker:{open:false, categoryId:null, context:'main'},
+  chat:{open:false, draft:'', typing:false, messages:[
+    {from:'bot', text:"Hi, I'm the Kalinga assistant. Ask me about plans, visits, or your care match — if I can't help, a team member will follow up by email."}
+  ]}
 };
 let _t;
 
@@ -115,11 +137,35 @@ function esc(str){ return String(str==null?'':str).replace(/[&<>"']/g, c => ({'&
 
 /* ---------- actions ---------- */
 function openQuiz(plan){ setState(s=>({quizOpen:true, q:{...blankQ(), plan:plan||null, addons:[...s.addons]}})); }
-function hwToggle(id){ setState(s=>({addons: s.addons.includes(id) ? s.addons.filter(x=>x!==id) : [...s.addons, id]})); }
+function openHwPicker(catId, context){ setState({hwPicker:{open:true, categoryId:catId, context}}); }
+function closeHwPicker(){ setState(s=>({hwPicker:{...s.hwPicker, open:false}})); }
+function selectHwProduct(productId){
+  const catId = categoryOfProduct(productId);
+  const catIds = HARDWARE_PRODUCTS[catId].map(p=>p.id);
+  const toggle = list => { const rest = list.filter(id=>!catIds.includes(id)); return list.includes(productId) ? rest : [...rest, productId]; };
+  setState(s=>{
+    const patch = { hwPicker:{...s.hwPicker, open:false} };
+    if (s.hwPicker.context==='pv') patch.pv = {...s.pv, addons: toggle(s.pv.addons)};
+    else patch.addons = toggle(s.addons);
+    return patch;
+  });
+}
 function openPV(tierId){ setState(s=>({pv:{open:true, tierId, duration:null, addons:[...s.addons]}})); }
 function closePV(){ setState(s=>({pv:{...s.pv, open:false}})); }
 function pvDuration(id){ setState(s=>({pv:{...s.pv, duration:id}})); }
-function pvAddon(id){ setState(s=>({pv:{...s.pv, addons: s.pv.addons.includes(id) ? s.pv.addons.filter(x=>x!==id) : [...s.pv.addons, id]}})); }
+function toggleChat(){ setState(s=>({chat:{...s.chat, open:!s.chat.open}})); }
+function setChatDraft(v){ setState(s=>({chat:{...s.chat, draft:v}})); }
+function sendChatMsg(){
+  const s = state;
+  const text = s.chat.draft.trim();
+  if (!text) return;
+  const reply = "Thanks for your message — a Kalinga team member will follow up by email or SMS, usually within a few hours. For anything urgent, email hello@kalinga.ph.";
+  setState(s2=>({chat:{...s2.chat, draft:'', typing:true, messages:[...s2.chat.messages, {from:'user', text}]}}));
+  clearTimeout(_t);
+  _t = setTimeout(()=>{
+    setState(s3=>({chat:{...s3.chat, typing:false, messages:[...s3.chat.messages, {from:'bot', text:reply}]}}));
+  }, 1100);
+}
 function pvContinue(){
   setState(s=>({
     pv:{...s.pv, open:false},
@@ -231,15 +277,15 @@ function render(){
 
   <section id="top" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,480px),1fr));background:#F6F1E7">
     <div style="padding:clamp(48px,7vw,96px) clamp(24px,6vw,96px);display:flex;flex-direction:column;justify-content:center;gap:24px;max-width:680px;width:100%">
-      <span style="font-size:12px;font-weight:700;letter-spacing:.14em;color:#3E7C93">KALINGA · VETTED LOCAL CAREGIVERS</span>
+      <span style="font-size:12px;font-weight:700;letter-spacing:.14em;color:#3E7C93">KALINGA · VETTED CAREGIVERS & NURSES</span>
       <h1 style="font-size:clamp(38px,4.8vw,60px);font-weight:600;line-height:1.08;letter-spacing:-.03em;color:#0E3446">Far from <em style="font-style:italic;color:#3E7C93">home</em>.<br>Never far from <em style="font-style:italic;color:#3E7C93">family</em>.</h1>
-      <p style="font-size:17px;line-height:1.65;color:#2F4A57;max-width:500px">Answer a 2-minute care match and we'll match your loved one with an NBI-cleared caregiver who lives nearby. They visit on the schedule you choose. After every visit you'll see GPS check-in times, photos and notes, no matter where in the world you are. Backed by our <strong style="color:#0E3446">missed-visit guarantee</strong>.</p>
+      <p style="font-size:17px;line-height:1.65;color:#2F4A57;max-width:500px">Answer a 2-minute care match and we'll match your loved one with an NBI-cleared, TESDA-trained caregiver — or a PRC-licensed, board-passer nurse — who lives nearby. They visit on the schedule you choose. After every visit you'll see GPS check-in times, photos and notes, no matter where in the world you are. Backed by our <strong style="color:#0E3446">missed-visit guarantee</strong>.</p>
       <div style="display:flex;flex-direction:column;gap:14px;align-items:flex-start">
         <button data-act="openQuiz" style="height:56px;padding:0 30px;border-radius:999px;border:none;background:#0E3446;color:#FFFFFF;font-size:16px;font-weight:700;box-shadow:0 8px 24px rgba(14,52,70,.25)">Start my care match →</button>
         <span style="font-size:14px;color:#2F4A57"><strong style="color:#0E3446">Founding-family pricing</strong> · No contract, cancel anytime</span>
       </div>
       <div style="display:flex;flex-wrap:wrap;gap:10px 24px;font-size:14px;color:#2F4A57">
-        ${['NBI-cleared caregivers','GPS-verified visits','Backup if they cancel'].map(d=>`<span style="display:flex;align-items:center;gap:8px"><span style="width:6px;height:6px;border-radius:50%;background:#3E7C93"></span>${esc(d)}</span>`).join('')}
+        ${['NBI-cleared caregivers','PRC-licensed, board-passer nurses','GPS-verified visits','Backup if they cancel'].map(d=>`<span style="display:flex;align-items:center;gap:8px"><span style="width:6px;height:6px;border-radius:50%;background:#3E7C93"></span>${esc(d)}</span>`).join('')}
       </div>
     </div>
     <div style="position:relative;min-height:520px;background:#CFE3E8">
@@ -256,9 +302,9 @@ function render(){
 
   <section id="caregivers" style="background:linear-gradient(180deg,#0E3446 0%,#1F5A70 55%,#3E7C93 100%);color:#FFFFFF;padding:72px 0 80px">
     <div style="max-width:1200px;margin:0 auto;padding:0 24px;display:flex;flex-direction:column;align-items:center;gap:16px;text-align:center">
-      <span style="font-size:12px;font-weight:700;letter-spacing:.14em;color:#BFDCE4">MEET THE CAREGIVERS</span>
+      <span style="font-size:12px;font-weight:700;letter-spacing:.14em;color:#BFDCE4">MEET THE CAREGIVERS & NURSES</span>
       <h2 style="font-size:clamp(30px,4vw,46px);font-weight:600;letter-spacing:-.03em;line-height:1.1">The people visiting <em style="font-style:italic;color:#F2B872">your family</em>.</h2>
-      <p style="font-size:16px;line-height:1.6;color:#DCEBEF;max-width:520px">We're onboarding local, NBI-cleared caregivers across Metro Manila and Bulacan. Each one is interviewed, cleared and trained by our team before their first booking.</p>
+      <p style="font-size:16px;line-height:1.6;color:#DCEBEF;max-width:520px">We're onboarding local, NBI-cleared, TESDA-trained caregivers across Metro Manila and Bulacan. PRC-licensed nurses — board passers with hands-on elderly care experience — are coming soon. Each one is interviewed, cleared and trained by our team before their first booking.</p>
     </div>
     <div class="cg-strip" style="display:flex;justify-content:center;gap:16px;overflow-x:auto;padding:36px 24px 8px;max-width:1200px;margin:0 auto">
       ${Array.from({length:5}).map(()=>`
@@ -390,15 +436,15 @@ function render(){
         <span style="font-size:13px;color:#5C7480">Select the devices you'd like, then add them when you start your care match.</span>
       </div>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:12px">
-        ${HARDWARE.map(h=>`
-        <button data-act="hwToggle" data-arg="${h.id}" style="text-align:left;border-radius:16px;border:1.5px solid ${s.addons.includes(h.id)?'#0E3446':'#E3EFF2'};background:${s.addons.includes(h.id)?'#F6F1E7':'#FFFFFF'};padding:14px;display:flex;flex-direction:column;gap:6px;color:#0E2A38">
+        ${HARDWARE.map(h=>{ const sel = selectedProductFor(h.id, s.addons); return `
+        <button data-act="openHwPicker" data-arg="${h.id}:main" style="text-align:left;border-radius:16px;border:1.5px solid ${sel?'#0E3446':'#E3EFF2'};background:${sel?'#F6F1E7':'#FFFFFF'};padding:14px;display:flex;flex-direction:column;gap:6px;color:#0E2A38">
           <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
             <span style="font-size:15px;font-weight:700;color:#0E3446">${esc(h.t)}</span>
-            <span style="width:22px;height:22px;border-radius:50%;border:1.5px solid #0E3446;background:${s.addons.includes(h.id)?'#0E3446':'#FFFFFF'};color:#FFFFFF;font-size:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0">${s.addons.includes(h.id)?'✓':''}</span>
+            <span style="width:22px;height:22px;border-radius:50%;border:1.5px solid #0E3446;background:${sel?'#0E3446':'#FFFFFF'};color:#FFFFFF;font-size:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0">${sel?'✓':''}</span>
           </div>
           <span style="font-size:13px;line-height:1.5;color:#2F4A57">${esc(h.b)}</span>
-          <span style="font-size:14px;font-weight:700;color:#0E3446">${esc(h.price)} <span style="font-size:12px;font-weight:500;color:#5C7480">${esc(h.sub)}</span></span>
-        </button>`).join('')}
+          ${sel?`<span style="font-size:14px;font-weight:700;color:#0E3446">${esc(sel.t)} — ${esc(sel.price)} <span style="font-size:12px;font-weight:500;color:#5C7480">${esc(sel.sub)}</span></span>`:`<span style="font-size:14px;font-weight:700;color:#3E7C93">${cheapestLabel(h.id)} · choose a model →</span>`}
+        </button>`; }).join('')}
       </div>
       ${s.addons.length?`<button data-act="openQuiz" style="align-self:flex-start;height:44px;padding:0 20px;border-radius:999px;border:none;background:#0E3446;color:#FFFFFF;font-size:14px;font-weight:700">Add selected to a care match →</button>`:''}
     </div>
@@ -513,11 +559,39 @@ function render(){
   ${s.loginOpen ? renderLoginModal(lg) : ''}
   ${s.pv.open ? renderPVModal(s.pv) : ''}
   ${s.quizOpen ? renderQuizModal(q, plan) : ''}
+  ${s.hwPicker.open ? renderHwPickerModal(s.hwPicker, s.hwPicker.context==='pv' ? s.pv.addons : s.addons) : ''}
+  ${renderChatWidget(s.chat)}
 
   </div>`;
 
   document.getElementById('app').innerHTML = html;
   bindInputs();
+}
+
+function renderChatWidget(chat){
+  return `
+  <div style="position:fixed;right:20px;bottom:20px;z-index:80;display:flex;flex-direction:column;align-items:flex-end;gap:12px">
+    ${chat.open?`
+    <div style="width:min(340px,calc(100vw - 40px));height:440px;background:#F6F1E7;border-radius:22px;box-shadow:0 20px 50px rgba(0,0,0,.3);display:flex;flex-direction:column;overflow:hidden">
+      <div style="background:#0E3446;color:#FFFFFF;padding:14px 16px;display:flex;justify-content:space-between;align-items:center">
+        <div style="display:flex;flex-direction:column;gap:1px">
+          <span style="font-size:14px;font-weight:700">Kalinga support</span>
+          <span style="font-size:11px;color:#BFDCE4">We're here, Kabayan · team follows up by email</span>
+        </div>
+        <button data-act="toggleChat" style="width:30px;height:30px;border-radius:50%;border:none;background:rgba(255,255,255,.15);color:#FFFFFF;font-size:16px">×</button>
+      </div>
+      <div id="chat_scroll" style="flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px">
+        ${chat.messages.map(m=>`
+        <div style="align-self:${m.from==='user'?'flex-end':'flex-start'};max-width:80%;background:${m.from==='user'?'#0E3446':'#FFFFFF'};color:${m.from==='user'?'#FFFFFF':'#0E2A38'};border-radius:14px;padding:9px 13px;font-size:13px;line-height:1.5;box-shadow:0 1px 4px rgba(14,42,56,.08)">${esc(m.text)}</div>`).join('')}
+        ${chat.typing?`<div style="align-self:flex-start;background:#FFFFFF;border-radius:14px;padding:9px 13px;font-size:13px;color:#5C7480">Typing…</div>`:''}
+      </div>
+      <div style="padding:10px;display:flex;gap:8px;border-top:1px solid #E7DFD0;background:#FFFFFF">
+        <input id="chat_draft" value="${esc(chat.draft)}" placeholder="Type your message…" style="flex:1;height:42px;border-radius:999px;border:1.5px solid #DED6C7;padding:0 14px;font-size:14px;outline:none;color:#0E2A38;font-family:inherit">
+        <button data-act="sendChatMsg" style="width:42px;height:42px;border-radius:50%;border:none;background:#0E3446;color:#FFFFFF;font-size:16px;flex-shrink:0">→</button>
+      </div>
+    </div>`:''}
+    <button data-act="toggleChat" style="width:58px;height:58px;border-radius:50%;border:none;background:#0E3446;color:#FFFFFF;box-shadow:0 10px 24px rgba(14,52,70,.35);display:flex;align-items:center;justify-content:center">${chat.open?'<span style="font-size:24px;line-height:1">×</span>':'<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>'}</button>
+  </div>`;
 }
 
 function renderApplyModal(a){
@@ -628,7 +702,7 @@ function renderPVModal(pv){
   const tier = TIERS.find(t=>t.id===pv.tierId) || TIERS[0];
   const planInfo = PLANS[pv.tierId] || PLANS.basic;
   const dur = DURATIONS.find(d=>d.id===pv.duration);
-  const addonItems = HARDWARE.filter(h=>pv.addons.includes(h.id));
+  const addonItems = ALL_PRODUCTS.filter(p=>pv.addons.includes(p.id));
   return `
   <div style="position:fixed;inset:0;z-index:65;background:rgba(11,37,51,.6);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:16px">
     <div style="background:#F6F1E7;border-radius:26px;max-width:480px;width:100%;max-height:92vh;overflow:auto;padding:24px;display:flex;flex-direction:column;gap:18px;box-shadow:0 30px 80px rgba(0,0,0,.35)">
@@ -649,10 +723,10 @@ function renderPVModal(pv){
         <span style="font-size:15px;font-weight:700;color:#0E3446">Add safety devices? <span style="font-weight:500;color:#5C7480">(optional)</span></span>
       </div>
       <div style="display:flex;flex-direction:column;gap:8px">
-        ${HARDWARE.map(h=>{ const on = pv.addons.includes(h.id); return `
-        <button data-act="pvAddon" data-arg="${h.id}" style="min-height:56px;border-radius:16px;border:1.5px solid ${on?'#0E3446':'#DED6C7'};background:#FFFFFF;display:flex;justify-content:space-between;align-items:center;gap:12px;text-align:left;color:#0E2A38;padding:10px 16px">
-          <span style="display:flex;flex-direction:column;gap:1px"><span style="font-size:14px;font-weight:700;color:#0E3446">${esc(h.t)}</span><span style="font-size:12px;color:#5C7480">${esc(h.price)} ${esc(h.sub)}</span></span>
-          <span style="width:22px;height:22px;border-radius:50%;border:1.5px solid #0E3446;background:${on?'#0E3446':'#FFFFFF'};color:#FFFFFF;font-size:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0">${on?'✓':''}</span>
+        ${HARDWARE.map(h=>{ const sel = selectedProductFor(h.id, pv.addons); return `
+        <button data-act="openHwPicker" data-arg="${h.id}:pv" style="min-height:56px;border-radius:16px;border:1.5px solid ${sel?'#0E3446':'#DED6C7'};background:#FFFFFF;display:flex;justify-content:space-between;align-items:center;gap:12px;text-align:left;color:#0E2A38;padding:10px 16px">
+          <span style="display:flex;flex-direction:column;gap:1px"><span style="font-size:14px;font-weight:700;color:#0E3446">${esc(h.t)}</span><span style="font-size:12px;color:#5C7480">${sel?esc(sel.t)+' — '+esc(sel.price):cheapestLabel(h.id)+' · choose a model'}</span></span>
+          <span style="width:22px;height:22px;border-radius:50%;border:1.5px solid #0E3446;background:${sel?'#0E3446':'#FFFFFF'};color:#FFFFFF;font-size:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0">${sel?'✓':''}</span>
         </button>`; }).join('')}
       </div>
       <div style="background:#FFFFFF;border-radius:18px;overflow:hidden;box-shadow:0 2px 12px rgba(14,42,56,.06)">
@@ -663,11 +737,39 @@ function renderPVModal(pv){
             ${tier.feats.map(ft=>`<span style="font-size:12px;color:#2F4A57">✓ ${esc(ft)}</span>`).join('')}
           </div>
           ${addonItems.length?`<div style="border-top:1px solid #E7DFD0;padding-top:8px;display:flex;flex-direction:column;gap:4px">
-            ${addonItems.map(h=>`<div style="display:flex;justify-content:space-between;font-size:12px;color:#0E3446"><span>${esc(h.t)}</span><span style="font-weight:700">${esc(h.price)}</span></div>`).join('')}
+            ${addonItems.map(p=>`<div style="display:flex;justify-content:space-between;font-size:12px;color:#0E3446"><span>${esc(p.t)}</span><span style="font-weight:700">${esc(p.price)}</span></div>`).join('')}
           </div>`:''}
         </div>
       </div>
       <button data-act="pvContinue" style="height:52px;border-radius:999px;border:none;background:#0E3446;color:#FFFFFF;font-size:15px;font-weight:700">Continue to care match →</button>`:''}
+    </div>
+  </div>`;
+}
+
+function renderHwPickerModal(hwPicker, currentAddons){
+  const cat = HARDWARE.find(h=>h.id===hwPicker.categoryId);
+  const products = HARDWARE_PRODUCTS[hwPicker.categoryId] || [];
+  return `
+  <div style="position:fixed;inset:0;z-index:70;background:rgba(11,37,51,.6);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:16px">
+    <div style="background:#F6F1E7;border-radius:26px;max-width:480px;width:100%;max-height:92vh;overflow:auto;padding:24px;display:flex;flex-direction:column;gap:18px;box-shadow:0 30px 80px rgba(0,0,0,.35)">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:14px;font-weight:700;color:#3E7C93">${cat?esc(cat.t.toUpperCase()):''}</span>
+        <button data-act="closeHwPicker" style="width:40px;height:40px;border-radius:50%;border:none;background:#FFFFFF;font-size:18px;color:#0E3446">×</button>
+      </div>
+      <h3 style="font-size:24px;font-weight:600;letter-spacing:-.02em;line-height:1.15;color:#0E3446">Choose a <em style="font-style:italic;color:#3E7C93">model</em></h3>
+      ${cat?`<p style="font-size:14px;line-height:1.5;color:#2F4A57">${esc(cat.b)}</p>`:''}
+      <div style="display:flex;flex-direction:column;gap:10px">
+        ${products.map(p=>{ const on = currentAddons.includes(p.id); return `
+        <button data-act="selectHwProduct" data-arg="${p.id}" style="min-height:70px;border-radius:16px;border:1.5px solid ${on?'#0E3446':'#DED6C7'};background:${on?'#F6F1E7':'#FFFFFF'};display:flex;justify-content:space-between;align-items:center;gap:12px;text-align:left;color:#0E2A38;padding:12px 16px">
+          <span style="display:flex;flex-direction:column;gap:3px">
+            <span style="font-size:15px;font-weight:700;color:#0E3446">${esc(p.t)}</span>
+            <span style="font-size:12px;line-height:1.4;color:#5C7480">${esc(p.b)}</span>
+            <span style="font-size:13px;font-weight:700;color:#0E3446">${esc(p.price)} <span style="font-size:11px;font-weight:500;color:#5C7480">${esc(p.sub)}</span></span>
+          </span>
+          <span style="width:22px;height:22px;border-radius:50%;border:1.5px solid #0E3446;background:${on?'#0E3446':'#FFFFFF'};color:#FFFFFF;font-size:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0">${on?'✓':''}</span>
+        </button>`; }).join('')}
+      </div>
+      <button data-act="closeHwPicker" style="height:52px;border-radius:999px;border:none;background:#0E3446;color:#FFFFFF;font-size:15px;font-weight:700">Done</button>
     </div>
   </div>`;
 }
@@ -742,7 +844,7 @@ function renderQuizModal(q, plan){
         ${q.step===4?(()=>{
           const dur = DURATIONS.find(d=>d.id===q.duration) || DURATIONS[0];
           const planTotal = priceFor(q.plan, q.duration);
-          const addonItems = HARDWARE.filter(h=>q.addons.includes(h.id));
+          const addonItems = ALL_PRODUCTS.filter(p=>q.addons.includes(p.id));
           return `
         <h3 style="font-size:32px;font-weight:600;letter-spacing:-.02em;line-height:1.15;color:#0E3446">Salamat, <em style="font-style:italic;color:#3E7C93">${esc(firstName)}</em>.</h3>
         <p style="font-size:16px;line-height:1.6;color:#2F4A57">We're matching caregivers for ${esc(whoLabel)} in ${esc(areaLabel)}. Within 24 hours we'll email up to 3 profiles to ${esc(q.email)}, and you choose who visits.</p>
@@ -754,7 +856,7 @@ function renderQuizModal(q, plan){
               <span style="font-size:24px;font-weight:700;color:#0E3446">${peso(planTotal)}<span style="font-size:13px;font-weight:500;color:#5C7480">/mo</span></span>
             </div>
             ${addonItems.length?`<div style="border-top:1px solid #E7DFD0;padding-top:10px;display:flex;flex-direction:column;gap:6px">
-              ${addonItems.map(h=>`<div style="display:flex;justify-content:space-between;font-size:13px;color:#0E3446"><span>${esc(h.t)}</span><span style="font-weight:700">${esc(h.price)}</span></div>`).join('')}
+              ${addonItems.map(p=>`<div style="display:flex;justify-content:space-between;font-size:13px;color:#0E3446"><span>${esc(p.t)}</span><span style="font-weight:700">${esc(p.price)}</span></div>`).join('')}
             </div>`:''}
           </div>
         </div>
@@ -786,12 +888,15 @@ document.addEventListener('click', function(e){
   const arg = el.getAttribute('data-arg');
   switch(act){
     case 'openQuiz': openQuiz(arg); break;
-    case 'hwToggle': hwToggle(arg); break;
+    case 'openHwPicker': { const [catId, context] = arg.split(':'); openHwPicker(catId, context); break; }
+    case 'closeHwPicker': closeHwPicker(); break;
+    case 'selectHwProduct': selectHwProduct(arg); break;
     case 'openPV': openPV(arg); break;
     case 'closePV': closePV(); break;
     case 'pvDuration': pvDuration(arg); break;
-    case 'pvAddon': pvAddon(arg); break;
     case 'pvContinue': pvContinue(); break;
+    case 'toggleChat': toggleChat(); break;
+    case 'sendChatMsg': sendChatMsg(); break;
     case 'closeQuiz': closeQuiz(); break;
     case 'openLogin': openLogin(); break;
     case 'closeLogin': closeLogin(); break;
@@ -824,32 +929,26 @@ document.addEventListener('click', function(e){
 });
 
 function bindInputs(){
-  const map = [
-    ['ap_name', v=>setAp({name:v})], ['ap_phone', v=>setAp({phone:v})], ['ap_city', v=>setAp({city:v})],
-    ['lg_id', v=>setLg({id:v})], ['lg_pw', v=>setLg({pw:v})], ['lg_code', v=>setLg({code:v.replace(/\D/g,'').slice(0,6)})],
-    ['q_name', v=>setQ({name:v})], ['q_email', v=>setQ({email:v})], ['q_phone', v=>setQ({phone:v})], ['q_country', v=>setQ({country:v})]
+  // Text inputs mutate state directly WITHOUT triggering a re-render, so the
+  // browser's native cursor/typing behavior is never disturbed. The state is
+  // read when a button (Continue, Submit, etc.) is clicked, which re-renders.
+  const direct = [
+    ['ap_name', v=>{ state.ap.name = v; }], ['ap_phone', v=>{ state.ap.phone = v; }], ['ap_city', v=>{ state.ap.city = v; }],
+    ['lg_id', v=>{ state.lg.id = v; }], ['lg_pw', v=>{ state.lg.pw = v; }],
+    ['lg_code', (v,el)=>{ const clean = v.replace(/\D/g,'').slice(0,6); state.lg.code = clean; if (el.value !== clean) el.value = clean; }],
+    ['q_name', v=>{ state.q.name = v; }], ['q_email', v=>{ state.q.email = v; }], ['q_phone', v=>{ state.q.phone = v; }], ['q_country', v=>{ state.q.country = v; }],
+    ['chat_draft', v=>{ state.chat.draft = v; }]
   ];
-  map.forEach(([id, fn])=>{
+  direct.forEach(([id, fn])=>{
     const el = document.getElementById(id);
     if (!el) return;
-    el.addEventListener('input', ()=>{ fn(el.value); refocus(id); });
+    el.addEventListener('input', ()=>{ fn(el.value, el); });
   });
+  const chatInput = document.getElementById('chat_draft');
+  if (chatInput) chatInput.addEventListener('keydown', e=>{ if (e.key==='Enter') sendChatMsg(); });
+  const chatScroll = document.getElementById('chat_scroll');
+  if (chatScroll) chatScroll.scrollTop = chatScroll.scrollHeight;
 }
-let _lastFocus = null, _lastSel = null;
-function refocus(id){
-  _lastFocus = id;
-  const el = document.getElementById(id);
-  _lastSel = el ? el.selectionStart : null;
-}
-const _origRender = render;
-render = function(){
-  _origRender();
-  if (_lastFocus){
-    const el = document.getElementById(_lastFocus);
-    if (el){ el.focus(); if (_lastSel!=null && el.setSelectionRange) try{ el.setSelectionRange(_lastSel,_lastSel); }catch(e){} }
-  }
-};
-
 window.addEventListener('resize', ()=>{ setState({wide: window.innerWidth>=900}); });
 window.addEventListener('scroll', ()=>{
   const sc = window.scrollY > 520;

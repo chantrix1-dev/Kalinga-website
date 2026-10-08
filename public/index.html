@@ -90,7 +90,7 @@ const JOIN_STEPS = [['1','Apply online','About 5 minutes. Your name, mobile numb
 const AP_DOCS = [{id:'id',t:'Valid government ID',req:true},{id:'nbi',t:'NBI clearance',req:true},{id:'brgy',t:'Barangay clearance',req:true},{id:'prc',t:'PRC nursing license',req:true},{id:'tesda',t:'TESDA Caregiving NC II',req:false},{id:'cpr',t:'First-aid or CPR certificate',req:false}];
 
 /* ---------- state ---------- */
-const blankAp = () => ({open:false,step:0,role:null,name:'',phone:'',city:'',yrs:null,docs:[],err:'',ref:''});
+const blankAp = () => ({open:false,step:0,role:'caregiver',name:'',phone:'',city:'',yrs:null,docs:[],err:'',ref:''});
 const blankLg = () => ({role:'family',id:'',pw:'',code:'',mode:'form',err:'',info:'',loading:false});
 const blankQ = () => ({step:0,who:null,area:null,needs:[],plan:null,duration:null,addons:[],name:'',email:'',phone:'',country:'',tos:false,err:'',sending:false});
 
@@ -164,7 +164,6 @@ function quizBack(){ setQ(q=>({step:Math.max(0,q.step-1)})); }
 function apNext(){
   const a = state.ap;
   if (a.step===0){
-    if (!a.role) return setAp({err:'Choose caregiver or nurse.'});
     if (a.name.trim().split(/\s+/).length < 2) return setAp({err:'Enter your first and last name.'});
     if (a.phone.replace(/\D/g,'').length < 10) return setAp({err:'Enter a valid mobile number.'});
     if (!a.city.trim()) return setAp({err:'Enter your city or municipality.'});
@@ -537,10 +536,7 @@ function renderApplyModal(a){
       ${a.step===0?`
       <div style="display:flex;flex-direction:column;gap:14px">
         <h3 style="margin:0;font-size:26px;font-weight:600;letter-spacing:-.02em;color:#0E3446">Tell us about <em style="font-style:italic;color:#3E7C93">you</em>.</h3>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
-          <button data-act="apRole" data-arg="caregiver" style="min-height:64px;border-radius:16px;border:${a.role==='caregiver'?'2px solid #0E3446':'1.5px solid #DED6C7'};background:#FFFFFF;color:#0E3446;font-size:15px;font-weight:700;padding:10px;display:flex;flex-direction:column;gap:2px;align-items:center;justify-content:center">Caregiver<span style="font-size:12px;font-weight:500;color:#2F4A57">TESDA NC II or experience</span></button>
-          <button disabled style="min-height:64px;border-radius:16px;border:1.5px dashed #DED6C7;background:#F6F1E7;color:#9AA8AE;font-size:15px;font-weight:700;padding:10px;display:flex;flex-direction:column;gap:2px;align-items:center;justify-content:center;cursor:not-allowed">Nurse<span style="font-size:12px;font-weight:600;color:#9AA8AE">Coming soon</span></button>
-        </div>
+        <span style="font-size:13px;font-weight:700;letter-spacing:.08em;color:#3E7C93">CAREGIVER APPLICATION</span>
         <label style="display:flex;flex-direction:column;gap:6px"><span style="font-size:13px;font-weight:700;color:#0E3446">Full name</span><input id="ap_name" value="${esc(a.name)}" placeholder="Joy Santos" style="height:50px;border-radius:14px;border:1.5px solid #DED6C7;background:#FFFFFF;padding:0 16px;font-size:16px;outline:none;color:#0E2A38;font-family:inherit"></label>
         <label style="display:flex;flex-direction:column;gap:6px"><span style="font-size:13px;font-weight:700;color:#0E3446">Mobile number</span><input id="ap_phone" value="${esc(a.phone)}" placeholder="09XX XXX XXXX" inputmode="tel" style="height:50px;border-radius:14px;border:1.5px solid #DED6C7;background:#FFFFFF;padding:0 16px;font-size:16px;outline:none;color:#0E2A38;font-family:inherit"></label>
         <label style="display:flex;flex-direction:column;gap:6px"><span style="font-size:13px;font-weight:700;color:#0E3446">City or municipality</span><input id="ap_city" value="${esc(a.city)}" placeholder="Jaro, Iloilo City" style="height:50px;border-radius:14px;border:1.5px solid #DED6C7;background:#FFFFFF;padding:0 16px;font-size:16px;outline:none;color:#0E2A38;font-family:inherit"></label>
@@ -587,7 +583,7 @@ function renderApplyModal(a){
 
 function renderLoginModal(lg){
   const idPh = lg.role==='caregiver' ? '09XX XXX XXXX' : 'maria@email.com';
-  const lgNewLabel = lg.role==='caregiver' ? 'Start a care match' : 'Apply as a caregiver';
+  const lgNewLabel = lg.role==='caregiver' ? 'Apply as a caregiver' : 'Start a care match';
   return `
   <div style="position:fixed;inset:0;z-index:70;background:rgba(11,37,51,.6);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:16px">
     <div style="background:#F6F1E7;border-radius:26px;max-width:440px;width:100%;max-height:92vh;overflow:auto;padding:24px;display:flex;flex-direction:column;gap:18px;box-shadow:0 30px 80px rgba(0,0,0,.35)">
@@ -597,9 +593,9 @@ function renderLoginModal(lg){
       </div>
       ${lg.mode==='form'?`
       <div style="display:flex;flex-direction:column;gap:16px">
-        <h3 style="font-size:28px;font-weight:600;letter-spacing:-.02em;color:#0E3446">Welcome <em style="font-style:italic;color:#3E7C93">back</em>.</h3>
+        <h3 style="font-size:28px;font-weight:600;letter-spacing:-.02em;color:#0E3446">Welcome, <em style="font-style:italic;color:#3E7C93">Kabayan</em>.</h3>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;background:#E7DFD0;border-radius:999px;padding:4px">
-          ${[['family','Family'],['caregiver','Caregiver']].map(([id,label])=>`<button data-act="lgRole" data-arg="${id}" style="height:42px;border-radius:999px;border:none;background:${lg.role===id?'#0E3446':'transparent'};color:${lg.role===id?'#FFFFFF':'#0E3446'};font-size:14px;font-weight:700">${label}</button>`).join('')}
+          ${[['family','Kabayan'],['caregiver','Caregiver']].map(([id,label])=>`<button data-act="lgRole" data-arg="${id}" style="height:42px;border-radius:999px;border:none;background:${lg.role===id?'#0E3446':'transparent'};color:${lg.role===id?'#FFFFFF':'#0E3446'};font-size:14px;font-weight:700">${label}</button>`).join('')}
         </div>
         <label style="display:flex;flex-direction:column;gap:6px"><span style="font-size:13px;font-weight:700;color:#0E3446">Email or mobile number</span>
           <input id="lg_id" value="${esc(lg.id)}" placeholder="${idPh}" style="height:50px;border-radius:14px;border:1.5px solid #DED6C7;background:#FFFFFF;padding:0 16px;font-size:16px;outline:none;color:#0E2A38;font-family:inherit"></label>

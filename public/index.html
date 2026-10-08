@@ -85,7 +85,7 @@ const FOOT_COLS = [
   {h:'Plans',links:[{t:'Basic',href:'#plans'},{t:'Standard',href:'#plans'},{t:'Premium',href:'#plans'},{t:'Safety devices',href:'#plans'}]},
   {h:'Support',links:[{t:'Become a caregiver',href:'#join'},{t:'Caregiver log in',href:'#join'},{t:'Privacy policy',href:'#'},{t:'Terms of service',href:'#'},{t:'Emergency protocol',href:'#'}]}
 ];
-const JOIN_PERKS = ['Visits near home, scheduled around your family','Weekly pay through GCash or Maya, no agency cut','Free first-aid, CPR and dementia-care training'];
+const JOIN_PERKS = ['Visits near home, scheduled around your family','Weekly pay, your choice of payout method — no agency cut','Free first-aid, CPR and dementia-care training'];
 const JOIN_STEPS = [['1','Apply online','About 5 minutes. Your name, mobile number, location and experience.'],['2','Send your documents','Valid ID, NBI clearance, barangay clearance, plus your TESDA NC II or PRC license if you have one.'],['3','Interview and orientation','A short video or in-person interview, then a half-day orientation.'],['4','Start receiving visits','Log in to the Kalinga app and accept visits from families nearby.']];
 const AP_DOCS = [{id:'id',t:'Valid government ID',req:true},{id:'nbi',t:'NBI clearance',req:true},{id:'brgy',t:'Barangay clearance',req:true},{id:'prc',t:'PRC nursing license',req:true},{id:'tesda',t:'TESDA Caregiving NC II',req:false},{id:'cpr',t:'First-aid or CPR certificate',req:false}];
 
@@ -468,13 +468,12 @@ function render(){
       <div style="display:flex;flex-direction:column;gap:18px">
         <span style="font-size:12px;font-weight:700;letter-spacing:.14em;color:#3E7C93">FOR CAREGIVERS AND NURSES</span>
         <h2 style="margin:0;font-size:clamp(30px,4vw,46px);font-weight:600;letter-spacing:-.03em;line-height:1.12;color:#0E3446">Care for lolos and lolas <em style="font-style:italic;color:#3E7C93">near you</em>.</h2>
-        <p style="margin:0;font-size:17px;line-height:1.6;color:#2F4A57">Work in your own barangay on a schedule you choose. Kalinga sends you visits, pays you every week through GCash, and gives every caregiver free first-aid and dementia-care training.</p>
+        <p style="margin:0;font-size:17px;line-height:1.6;color:#2F4A57">Work in your own barangay on a schedule you choose. Kalinga sends you visits, pays you every week, and gives every caregiver free first-aid and dementia-care training.</p>
         <div style="display:flex;flex-direction:column;gap:10px">
           ${JOIN_PERKS.map(p=>`<div style="display:flex;gap:12px;align-items:flex-start"><span style="width:24px;height:24px;border-radius:50%;background:#E3EFF2;color:#0E3446;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">✓</span><span style="font-size:16px;line-height:1.5;color:#0E2A38">${esc(p)}</span></div>`).join('')}
         </div>
         <div style="display:flex;flex-wrap:wrap;gap:12px;padding-top:6px">
           <button data-act="openApply" style="height:56px;padding:0 28px;border-radius:999px;border:none;background:#0E3446;color:#FFFFFF;font-size:16px;font-weight:700;box-shadow:0 10px 24px rgba(14,52,70,.25)">Apply as a caregiver →</button>
-          <button data-act="openCgLogin" style="height:56px;padding:0 24px;border-radius:999px;border:1.5px solid #0E3446;background:transparent;color:#0E3446;font-size:16px;font-weight:700">I already work with Kalinga</button>
         </div>
       </div>
       <div style="background:#F6F1E7;border-radius:28px;padding:28px;display:flex;flex-direction:column;gap:6px">

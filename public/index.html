@@ -103,11 +103,31 @@ const FAQS = [
 const FOOT_COLS = [
   {h:'Company',links:[{t:'About us',href:'#'},{t:'How it works',href:'#how'},{t:'Start a care match',href:'#top'},{t:'Contact',href:'mailto:hello@kalinga.ph'}]},
   {h:'Plans',links:[{t:'Basic',href:'#plans'},{t:'Standard',href:'#plans'},{t:'Premium',href:'#plans'},{t:'Safety devices',href:'#plans'}]},
-  {h:'Support',links:[{t:'Become a caregiver',href:'#join'},{t:'Caregiver log in',href:'#join'},{t:'Privacy policy',href:'#'},{t:'Terms of service',href:'#'},{t:'Emergency protocol',href:'#'}]}
+  {h:'Support',links:[{t:'Become a caregiver',act:'openApply'},{t:'Caregiver log in',act:'openCgLogin'},{t:'Privacy policy',act:'openLegal',arg:'privacy'},{t:'Terms of service',act:'openLegal',arg:'terms'},{t:'Emergency protocol',act:'openLegal',arg:'emergency'}]}
 ];
 const JOIN_PERKS = ['Visits near home, scheduled around your family','Weekly pay, your choice of payout method — no agency cut','Free first-aid, CPR and dementia-care training'];
 const JOIN_STEPS = [['1','Apply online','About 5 minutes. Your name, mobile number, location and experience.'],['2','Send your documents','Valid ID, NBI clearance, barangay clearance, plus your TESDA NC II or PRC license if you have one.'],['3','Interview and orientation','A short video or in-person interview, then a half-day orientation.'],['4','Start receiving visits','Log in to the Kalinga app and accept visits from families nearby.']];
 const AP_DOCS = [{id:'id',t:'Valid government ID',req:true},{id:'nbi',t:'NBI clearance',req:true},{id:'brgy',t:'Barangay clearance',req:true},{id:'prc',t:'PRC nursing license',req:true},{id:'tesda',t:'TESDA Caregiving NC II',req:false},{id:'cpr',t:'First-aid or CPR certificate',req:false}];
+const LEGAL = {
+  privacy: {t:'Privacy policy', body:[
+    'Kalinga collects only what we need to arrange and verify caregiver visits: your contact details, your loved one’s name and address, care notes, and the caregiver’s verification documents.',
+    'We never sell personal data. Information is shared only with the caregiver assigned to a visit, and with payment processors needed to run payouts.',
+    'All data is handled in line with the Philippine Data Privacy Act of 2012 (RA 10173). You can request a copy of your data or ask us to delete it at any time by emailing hello@kalinga.ph.',
+    'This is a summary for our pre-launch site. A full, lawyer-reviewed policy will replace this before Kalinga opens to paying families.'
+  ]},
+  terms: {t:'Terms of service', body:[
+    'Kalinga arranges scheduled check-in visits by independent, vetted caregivers and nurses. Visits are companionship, light assistance and wellness check-ins — they are not medical treatment.',
+    'Plans are billed monthly with no long-term contract; you can pause or cancel from your next billing cycle. Our missed-visit guarantee means we send a backup caregiver at no extra cost if a scheduled visit is missed.',
+    'Caregivers accept visits as independent service providers, not Kalinga employees. Each one passes an NBI and barangay clearance check before their first booking.',
+    'This is a summary for our pre-launch site. Full terms will be published before Kalinga opens to paying families.'
+  ]},
+  emergency: {t:'Emergency protocol', body:[
+    'Kalinga is not a medical provider or an emergency service. In a medical emergency, call 911 (or your local emergency number) first.',
+    'If a caregiver notices a health concern during a visit, they are trained to contact the family’s emergency contact immediately and to call emergency services if the situation looks urgent.',
+    'Every visit log includes a timestamped note, so families always know what happened and when. Serious incidents are also escalated to the Kalinga team the same day.',
+    'We are finalizing a detailed, step-by-step protocol with a licensed nurse-consultant ahead of launch.'
+  ]}
+};
 
 /* ---------- state ---------- */
 const blankAp = () => ({open:false,step:0,role:'caregiver',name:'',phone:'',city:'',yrs:null,docs:[],err:'',ref:''});
@@ -124,6 +144,7 @@ let state = {
   addons:[],
   pv:{open:false, tierId:null, duration:null, addons:[]},
   hwPicker:{open:false, categoryId:null, context:'main'},
+  legalOpen:null,
   chat:{open:false, draft:'', typing:false, messages:[
     {from:'bot', text:"Hi, I'm the Kalinga assistant. Ask me about plans, visits, or your care match — if I can't help, a team member will follow up by email."}
   ]}
@@ -134,6 +155,8 @@ function setState(patch){ state = {...state, ...(typeof patch==='function'?patch
 function setQ(p){ setState(s=>({q:{...s.q, err:'', ...(typeof p==='function'?p(s.q):p)}})); }
 function setAp(p){ setState(s=>({ap:{...s.ap, err:'', ...(typeof p==='function'?p(s.ap):p)}})); }
 function setLg(p){ setState(s=>({lg:{...s.lg, err:'', ...(typeof p==='function'?p(s.lg):p)}})); }
+function openLegal(id){ setState({legalOpen:id}); }
+function closeLegal(){ setState({legalOpen:null}); }
 
 function esc(str){ return String(str==null?'':str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
@@ -278,7 +301,7 @@ function render(){
   </header>
 
   <section id="top" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,480px),1fr));background:#F6F1E7">
-    <div style="padding:clamp(48px,7vw,96px) clamp(24px,6vw,96px);display:flex;flex-direction:column;justify-content:center;gap:24px;max-width:680px;width:100%">
+    <div style="padding:clamp(40px,6vw,72px) clamp(24px,6vw,80px);display:flex;flex-direction:column;justify-content:center;gap:18px;max-width:640px;width:100%">
       <span style="font-size:12px;font-weight:700;letter-spacing:.14em;color:#3E7C93">KALINGA · VETTED CAREGIVERS & NURSES</span>
       <h1 style="font-size:clamp(38px,4.8vw,60px);font-weight:600;line-height:1.08;letter-spacing:-.03em;color:#0E3446">Far from <em style="font-style:italic;color:#3E7C93">home</em>.<br>Never far from <em style="font-style:italic;color:#3E7C93">family</em>.</h1>
       <p style="font-size:17px;line-height:1.65;color:#2F4A57;max-width:500px">Answer a 2-minute care match and we'll match your loved one with an NBI-cleared, TESDA-trained caregiver — or a PRC-licensed, board-passer nurse — who lives nearby. They visit on the schedule you choose. After every visit you'll see GPS check-in times, photos and notes, no matter where in the world you are. Backed by our <strong style="color:#0E3446">missed-visit guarantee</strong>.</p>
@@ -290,7 +313,7 @@ function render(){
         ${['NBI-cleared caregivers','PRC-licensed, board-passer nurses','GPS-verified visits','Backup if they cancel'].map(d=>`<span style="display:flex;align-items:center;gap:8px"><span style="width:6px;height:6px;border-radius:50%;background:#3E7C93"></span>${esc(d)}</span>`).join('')}
       </div>
     </div>
-    <div style="position:relative;min-height:520px;background:#F1E8D8;overflow:hidden">
+    <div style="position:relative;min-height:440px;background:#F1E8D8;overflow:hidden">
       <svg viewBox="0 0 640 520" preserveAspectRatio="xMidYMid slice" style="position:absolute;inset:0;width:100%;height:100%" xmlns="http://www.w3.org/2000/svg">
         <defs>
           <linearGradient id="paperGrad" x1="0" y1="0" x2="1" y2="1">
@@ -354,7 +377,7 @@ function render(){
     <div style="max-width:1200px;margin:0 auto;padding:0 24px;display:flex;flex-direction:column;align-items:center;gap:16px;text-align:center">
       <span style="font-size:12px;font-weight:700;letter-spacing:.14em;color:#BFDCE4">MEET THE CAREGIVERS & NURSES</span>
       <h2 style="font-size:clamp(30px,4vw,46px);font-weight:600;letter-spacing:-.03em;line-height:1.1">The people visiting <em style="font-style:italic;color:#F2B872">your family</em>.</h2>
-      <p style="font-size:16px;line-height:1.6;color:#DCEBEF;max-width:520px">We're onboarding local, NBI-cleared, TESDA-trained caregivers across Metro Manila and Bulacan. PRC-licensed nurses — board passers with hands-on elderly care experience — are coming soon. Each one is interviewed, cleared and trained by our team before their first booking.</p>
+      <p style="font-size:16px;line-height:1.6;color:#DCEBEF;max-width:520px">Local, NBI-cleared, TESDA-trained caregivers and PRC-licensed, board-passer nurses across Metro Manila and Bulacan. Each one is interviewed, cleared and trained by our team before their first booking.</p>
     </div>
     <div class="cg-strip" style="display:flex;justify-content:center;gap:16px;overflow-x:auto;padding:36px 24px 8px;max-width:1200px;margin:0 auto">
       ${Array.from({length:5}).map(()=>`
@@ -519,7 +542,7 @@ function render(){
   </section>
 
   <section style="position:relative;background:linear-gradient(180deg,#1F5A70 0%,#2F6D85 100%);color:#FFFFFF;overflow:hidden">
-    <div style="position:absolute;inset:0;opacity:.35"><div class="img-slot">Optional background: Philippine sea or sunset</div></div>
+    <div style="position:absolute;inset:0;opacity:.35"><div class="img-slot"></div></div>
     <div style="position:relative;max-width:760px;margin:0 auto;padding:88px 24px;display:flex;flex-direction:column;align-items:center;gap:18px;text-align:center;pointer-events:none">
       <div style="width:86px;height:96px;background:#0E3446;border:2px solid #BFDCE4;clip-path:polygon(50% 0,100% 18%,100% 62%,50% 100%,0 62%,0 18%);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0">
         <span style="font-size:11px;font-weight:700;letter-spacing:.1em;color:#BFDCE4">MISSED</span>
@@ -554,8 +577,23 @@ function render(){
       </div>
       <span style="font-size:14px;color:#2F4A57">Still have questions? <a href="mailto:hello@kalinga.ph" style="font-weight:700;text-decoration:underline">Message us</a> or <button data-act="openQuiz" style="background:none;border:none;padding:0;font-size:14px;font-weight:700;color:#0E3446;text-decoration:underline">start a care match</button>.</span>
     </div>
-    <div style="position:relative;min-height:440px;background:#E7DFD0">
-      <div class="img-slot"></div>
+    <div style="position:relative;min-height:440px;background:#E7DFD0;display:flex;align-items:center;justify-content:center;padding:40px 24px">
+      <div style="display:flex;flex-direction:column;gap:14px;max-width:380px;width:100%">
+        <span style="font-size:12px;font-weight:700;letter-spacing:.14em;color:#3E7C93;text-align:center">WHY FAMILIES TRUST KALINGA</span>
+        ${[
+          ['NBI-cleared & TESDA-trained','Every caregiver is background-checked and trained before their first visit.'],
+          ['GPS-verified visits','Check-in and check-out times are logged automatically — no guessing.'],
+          ['Missed-visit guarantee','If a caregiver cancels, we send a backup at no extra cost.'],
+          ['Notes after every visit','Photos and a short update land in your inbox, wherever you are.']
+        ].map(([t,b])=>`
+        <div style="background:#FFFFFF;border-radius:16px;padding:16px 18px;display:flex;gap:12px;align-items:flex-start;box-shadow:0 6px 18px rgba(14,42,56,.08)">
+          <span style="width:28px;height:28px;border-radius:50%;background:#0E3446;color:#F2B872;font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">✓</span>
+          <span style="display:flex;flex-direction:column;gap:2px">
+            <span style="font-size:14px;font-weight:700;color:#0E3446">${t}</span>
+            <span style="font-size:13px;line-height:1.5;color:#5C7480">${b}</span>
+          </span>
+        </div>`).join('')}
+      </div>
     </div>
   </section>
 
@@ -563,7 +601,7 @@ function render(){
     <div style="max-width:1100px;margin:0 auto;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:48px;align-items:center">
       <div style="display:flex;flex-direction:column;gap:18px">
         <span style="font-size:12px;font-weight:700;letter-spacing:.14em;color:#3E7C93">FOR CAREGIVERS AND NURSES</span>
-        <h2 style="margin:0;font-size:clamp(30px,4vw,46px);font-weight:600;letter-spacing:-.03em;line-height:1.12;color:#0E3446">Care for lolos and lolas <em style="font-style:italic;color:#3E7C93">near you</em>.</h2>
+        <h2 style="margin:0;font-size:clamp(30px,4vw,46px);font-weight:600;letter-spacing:-.03em;line-height:1.12;color:#0E3446">Care for elderly Filipinos <em style="font-style:italic;color:#3E7C93">near you</em>.</h2>
         <p style="margin:0;font-size:17px;line-height:1.6;color:#2F4A57">Work in your own barangay on a schedule you choose. Kalinga sends you visits, pays you every week, and gives every caregiver free first-aid and dementia-care training.</p>
         <div style="display:flex;flex-direction:column;gap:10px">
           ${JOIN_PERKS.map(p=>`<div style="display:flex;gap:12px;align-items:flex-start"><span style="width:24px;height:24px;border-radius:50%;background:#E3EFF2;color:#0E3446;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">✓</span><span style="font-size:16px;line-height:1.5;color:#0E2A38">${esc(p)}</span></div>`).join('')}
@@ -595,13 +633,16 @@ function render(){
         ${FOOT_COLS.map(col=>`
         <div style="display:flex;flex-direction:column;gap:10px">
           <span style="font-size:14px;font-weight:700">${esc(col.h)}</span>
-          ${col.links.map(l=>`<a href="${l.href}" style="color:#DCEBEF;font-size:14px">${esc(l.t)}</a>`).join('')}
+          ${col.links.map(l=> l.act
+            ? `<button data-act="${l.act}" ${l.arg?`data-arg="${l.arg}"`:''} style="background:none;border:none;padding:0;text-align:left;color:#DCEBEF;font-size:14px;font-family:inherit;cursor:pointer">${esc(l.t)}</button>`
+            : `<a href="${l.href}" style="color:#DCEBEF;font-size:14px">${esc(l.t)}</a>`
+          ).join('')}
         </div>`).join('')}
       </div>
       <p style="font-size:12px;line-height:1.65;color:#BFDCE4;border-top:1px solid rgba(255,255,255,.15);padding-top:24px">Kalinga arranges scheduled check-in visits by independent, vetted caregivers. These visits are not medical care. Kalinga is not a medical provider or an emergency service, so in an emergency call 911. We handle personal and health information in line with the Philippine Data Privacy Act of 2012 (RA 10173).</p>
       <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px;font-size:12px;color:#BFDCE4">
         <span>© 2026 Kalinga. All rights reserved.</span>
-        <span style="display:flex;gap:18px"><a href="#" style="color:#BFDCE4">Privacy</a><a href="#" style="color:#BFDCE4">Terms</a><span>hello@kalinga.ph</span></span>
+        <span style="display:flex;gap:18px"><button data-act="openLegal" data-arg="privacy" style="background:none;border:none;padding:0;color:#BFDCE4;font-size:12px;font-family:inherit;cursor:pointer">Privacy</button><button data-act="openLegal" data-arg="terms" style="background:none;border:none;padding:0;color:#BFDCE4;font-size:12px;font-family:inherit;cursor:pointer">Terms</button><span>hello@kalinga.ph</span></span>
       </div>
     </div>
   </footer>
@@ -610,6 +651,7 @@ function render(){
   ${s.pv.open ? renderPVModal(s.pv) : ''}
   ${s.quizOpen ? renderQuizModal(q, plan) : ''}
   ${s.hwPicker.open ? renderHwPickerModal(s.hwPicker, s.hwPicker.context==='pv' ? s.pv.addons : s.addons) : ''}
+  ${s.legalOpen ? renderLegalModal(s.legalOpen) : ''}
   ${renderChatWidget(s.chat)}
 
   </div>`;
@@ -796,6 +838,24 @@ function renderPVModal(pv){
   </div>`;
 }
 
+function renderLegalModal(id){
+  const doc = LEGAL[id];
+  if (!doc) return '';
+  return `
+  <div style="position:fixed;inset:0;z-index:75;background:rgba(11,37,51,.6);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:16px">
+    <div style="background:#FFFFFF;border-radius:26px;max-width:560px;width:100%;max-height:86vh;overflow:auto;padding:28px;display:flex;flex-direction:column;gap:16px;box-shadow:0 30px 80px rgba(0,0,0,.35)">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <h3 style="font-size:22px;font-weight:700;letter-spacing:-.02em;color:#0E3446">${esc(doc.t)}</h3>
+        <button data-act="closeLegal" style="width:40px;height:40px;border-radius:50%;border:none;background:#F6F1E7;font-size:18px;color:#0E3446;flex-shrink:0">×</button>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        ${doc.body.map(p=>`<p style="font-size:14px;line-height:1.65;color:#2F4A57;margin:0">${esc(p)}</p>`).join('')}
+      </div>
+      <button data-act="closeLegal" style="height:48px;border-radius:999px;border:none;background:#0E3446;color:#FFFFFF;font-size:14px;font-weight:700">Close</button>
+    </div>
+  </div>`;
+}
+
 function renderHwPickerModal(hwPicker, currentAddons){
   const cat = HARDWARE.find(h=>h.id===hwPicker.categoryId);
   const products = HARDWARE_PRODUCTS[hwPicker.categoryId] || [];
@@ -940,6 +1000,8 @@ document.addEventListener('click', function(e){
     case 'openQuiz': openQuiz(arg); break;
     case 'openHwPicker': { const [catId, context] = arg.split(':'); openHwPicker(catId, context); break; }
     case 'closeHwPicker': closeHwPicker(); break;
+    case 'openLegal': openLegal(arg); break;
+    case 'closeLegal': closeLegal(); break;
     case 'selectHwProduct': selectHwProduct(arg); break;
     case 'openPV': openPV(arg); break;
     case 'closePV': closePV(); break;
